@@ -1,0 +1,2504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>CTC Lineal General - Corredor Unificado</title>
+<style>
+    body { background-color: #000; color: white; font-family: Arial; margin: 0; overflow-x: auto; user-select: none; }
+    .map-container { position: relative; width: 11500px; height: 2350px; background-color: #0b0c10; }
+
+    /* --- ESTILO SEÑALES --- */
+    .senal-unificada { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 150; }
+    .nombre-s-abajo { flex-direction: column-reverse; }
+    .s-nombre-real { color: #FFFF00; font-size: 10px; font-weight: bold; margin-bottom: -2px; text-shadow: 1px 1px 2px #000; }
+    .s-grafico-real { display: flex; align-items: center; justify-content: center; }
+    .t-girada { font-size: 35px; font-weight: bold; transform: rotate(-90deg); margin-right: -10px; line-height: 1; transition: 0.2s; }
+    .circulo-led { width: 22px; height: 22px; border-radius: 50%; background-color: #200; transition: 0.2s; }
+
+    /* --- SEÑALES ENANAS --- */
+    .enana .t-girada { font-size: 22px !important; margin-right: -6px !important; }
+    .enana .circulo-led { width: 14px !important; height: 14px !important; }
+    .enana .s-nombre-real { font-size: 10px !important; }
+
+    .sentido-izq .s-grafico-real { flex-direction: row-reverse; }
+    .sentido-izq .t-girada { transform: rotate(90deg); margin-right: 0; margin-left: -10px; }
+
+    /* ESTADOS DE COLORES SEÑALES */
+    .f-rojo .t-girada { color: #FF0000 !important; }
+    .f-rojo .circulo-led { background-color: #FF0000 !important; box-shadow: 0 0 15px #FF0000; }
+    .f-verde .t-girada { color: #00FF00 !important; }
+    .f-verde .circulo-led { background-color: #00FF00 !important; box-shadow: 0 0 15px #00FF00; }
+    .f-maniobra .t-girada { color: #FFFF00 !important; }
+    .f-maniobra .circulo-led { background-color: #FFFF00 !important; box-shadow: 0 0 15px #FFFF00; }
+
+    /* --- ESTILO VÍAS --- */
+    .via { position: absolute; height: 10px; background-color: #FF0000; border: 1px solid #FF0000; display: flex; align-items: center; justify-content: center; z-index: 30; box-shadow: 0 0 10px #f00; transition: 0.1s; box-sizing: border-box; }
+    .via::after { content: attr(data-nombre); position: absolute; color: #FFFF00; font-weight: bold; font-size: 12px; text-transform: uppercase; white-space: nowrap; }
+    .v-arriba::after { bottom: 18px; }
+    .v-abajo::after { top: 18px; }
+
+    .via-fantasma { background-color: #2a2d32 !important; border: none !important; color: transparent !important; z-index: 25 !important; box-shadow: none !important; }
+    .libre { background-color: #00FF00 !important; border-color: #00FF00 !important; color: transparent !important; box-shadow: 0 0 10px #0f0 !important; }
+    .diagonal { transform-origin: 0% 50%; }
+
+    /* --- PANELES CONTROLES SUPERIORES --- */
+    .status-container-bel { position: absolute; top: 570px; left: 380px; background-color: #0056b3; padding: 12px 18px; border-radius: 4px; border: 2px solid white; display: flex; flex-direction: column; gap: 12px; z-index: 100; box-shadow: 5px 5px 15px rgba(0,0,0,0.7); }
+    .status-container-nuz { position: absolute; top: 520px; left: 1450px; background-color: #0056b3; padding: 12px 18px; border-radius: 4px; border: 2px solid white; display: flex; flex-direction: column; gap: 12px; z-index: 100; box-shadow: 5px 5px 15px rgba(0,0,0,0.7); font-size: 15px; }
+    .status-container-oli { position: absolute; top: 520px; left: 2960px; background-color: #0056b3; padding: 12px 18px; border-radius: 4px; border: 2px solid white; display: flex; flex-direction: column; gap: 12px; z-index: 100; box-shadow: 5px 5px 15px rgba(0,0,0,0.7); font-size: 15px; }
+    .status-container-isi { position: absolute; top: 520px; left: 4550px; background-color: #0056b3; padding: 12px 18px; border-radius: 4px; border: 2px solid white; display: flex; flex-direction: column; gap: 12px; z-index: 100; box-shadow: 5px 5px 15px rgba(0,0,0,0.7); font-size: 15px; }
+   .status-container-vic { position: absolute; top: 245px; left: 6275px; background-color: #0056b3; padding: 12px 18px; border-radius: 4px; border: 2px solid white; display: flex; flex-direction: column; gap: 12px; z-index: 100; box-shadow: 5px 5px 15px rgba(0,0,0,0.7); font-size: 15px; }
+  .status-container-fer { position: absolute; top: 520px; left: 8250px; background-color: #0056b3; padding: 12px 18px; border-radius: 4px; border: 2px solid white; display: flex; flex-direction: column; gap: 12px; z-index: 100; box-shadow: 5px 5px 15px rgba(0,0,0,0.7); font-size: 15px; }
+.status-container-tig { position: absolute; top: 580px; left: 9780px; background-color: #0056b3; padding: 12px 18px; border-radius: 4px; border: 2px solid white; display: flex; flex-direction: column; gap: 12px; z-index: 100; box-shadow: 5px 5px 15px rgba(0,0,0,0.7); font-size: 15px; }
+
+
+    
+
+    .status-row { display: flex; align-items: center; gap: 15px; color: white; }
+    .nombre-grupo { font-weight: bold; width: 75px; border-right: 1px solid rgba(255,255,255,0.3); }
+    .led-rd { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; background: #222; display: inline-block; }
+    .l-white { background: #fff !important; box-shadow: 0 0 10px #fff; }
+    .l-yellow { background: #ffcc00 !important; box-shadow: 0 0 10px #ffcc00; }
+    .l-red { background: #ff0000 !important; box-shadow: 0 0 10px #ff0000; }
+
+    .cd-via-panelB { position: absolute; top: 655px; left: 730px; background-color: #7D5BA6; border: 2px solid #777; width: 140px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelN { position: absolute; top: 655px; left: 1795px; background-color: #41B883; border: 1px solid #777; width: 140px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelR { position: absolute; top: 677px; left: 2370px; background-color: #41B883; border: 1px solid #777; width: 120px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelVL { position: absolute; top: 677px; left: 2820px; background-color: #4682B4; border: 1px solid #777; width: 120px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelO { position: absolute; top: 655px; left: 3540px; background-color: #4682B4; border: 1px solid #777; width: 140px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelLL { position: absolute; top: 677px; left: 4050px; background-color: #4682B4; border: 1px solid #777; width: 120px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelMA { position: absolute; top: 677px; left: 4400px; background-color: #DE2C14; border: 1px solid #777; width: 120px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelSI { position: absolute; top: 655px; left: 5425px; background-color: #DE2C14; border: 1px solid #777; width: 140px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelAC { position: absolute; top: 677px; left: 4870px; background-color: #DE2C14; border: 1px solid #777; width: 120px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelVI { position: absolute; top: 655px; left: 7010px; background-color: #20603D; border: 1px solid #777; width: 140px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelBC { position: absolute; top: 677px; left: 6095px; background-color: #20603D; border: 1px solid #777; width: 120px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelVY { position: absolute; top: 677px; left: 8215px;  background-color: #632D7A; border: 1px solid #777; width: 140px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelSF { position: absolute; top: 655px; left: 8770px;  background-color: #632D7A; border: 1px solid #777; width: 140px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+    .cd-via-panelCA { position: absolute; top: 677px; left: 9270px;  background-color: #632D7A; border: 1px solid #777; width: 140px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+  .cd-via-panelT { position: absolute; top: 655px; left: 10815px;  background-color: #CC9900; border: 1px solid #777; width: 140px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; z-index: 50; }
+
+
+
+
+    .led-10mm { width: 15px; height: 15px; border-radius: 50%; background-color: #1a1a1a; border: 2px solid #333; display: inline-block; margin-right: 5px; transition: 0.2s; }
+    .l-on-w { background-color: #ffffff !important; box-shadow: 0 0 15px #fff !important; }
+    .l-on-b { background-color: #0088ff !important; box-shadow: 0 0 15px #0088ff !important; }
+    
+    .estacion { border: 2px solid white; background: black; padding: 5px 20px; font-weight: bold; position: absolute; font-size: 22px; z-index: 20; }
+    .anden { position: absolute; height: 35px; background-color: #A9A9A9; border: 1px solid #777777; z-index: 10; opacity: 0.9; }
+.andenfin { position: absolute; height: 9px; background-color: #666666; border: 1px solid #444444; z-index: 10; opacity: 0.9; }
+    .nombre-cambio { background-color: #0056b3; border: 1px solid white; color: white; padding: 1px 4px; font-size: 10px; font-weight: bold; border-radius: 2px; z-index: 50; position: absolute; }
+    .led-enclav { width: 12px; height: 12px; border-radius: 50%; background-color: #1a1a1a; border: 1px solid #444; display: inline-block; transition: 0.3s; }
+    .enc-on { background-color: #00BFFF !important; box-shadow: 0 0 10px #00BFFF !important; }
+    .label-enc { font-size: 9px; color: #00BFFF; font-weight: bold; margin-bottom: 2px; }
+    .label-plataforma { position: absolute; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; letter-spacing: 1px; pointer-events: none; z-index: 15; }
+
+    /* --- PASOS A NIVEL SIEMENS EN L --- */
+    .pan-rect { position: absolute; width: 20px; height: 400px; background-color: #444; z-index: 5; }
+    .pan-etiqueta { position: absolute; background-color: black; color: white; border: 1px solid white; padding: 2px 6px; font-size: 11px; transform: rotate(-90deg); transform-origin: left bottom; z-index: 25; }
+    .ind-pan-container { position: absolute; width: 30px; height: 30px; z-index: 30; cursor: pointer; }
+    .ind-alto { position: absolute; left: 0; bottom: 10px; width: 10px; height: 25px; background-color: #331100; border: 1px solid #000; }
+    .ind-alto.active { background-color: #FFFF00; box-shadow: 0 0 10px #FF0; }
+    .ind-bajo { position: absolute; left: 0; bottom: 0; width: 30px; height: 10px; background-color: #330000; border: 1px solid #000; }
+    .ind-bajo.active { background-color: #FF0000; box-shadow: 0 0 10px #F00; }
+
+    .pan-amarillo-on { background-color: #FFFF00 !important; box-shadow: 0 0 15px #FFFF00 !important; border-color: #FFFF00 !important; }
+    .pan-rojo-on { background-color: #FF0000 !important; box-shadow: 0 0 15px #FF0000 !important; border-color: #FF0000 !important; }
+    .indicacion { background: #b50b6e; border: 2px solid white; color: white; padding: 2px 10px; font-weight: bold; position: absolute; font-size: 13px; z-index: 20; letter-spacing: 1px;box-shadow: 4px 4px 0px #000; }
+
+/* EL PARAGOLPE DIBUJADO (FLECHA ROJA + BARRA) */
+.paragolpe-diseno {
+    position: absolute;
+    width: 25px;
+    height: 20px;
+    z-index: 100;
+}
+
+/* La flecha roja (Triángulo) */
+.paragolpe-diseno::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 15px solid #ff0000; /* Color rojo puro */
+}
+
+/* La barra vertical de tope */
+.paragolpe-diseno::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 4px;
+    height: 20px;
+    background-color: #ff0000;
+}
+
+/* La línea pequeña que une la flecha con la barra */
+.paragolpe-diseno .union {
+    position: absolute;
+    left: 15px;
+    top: 8px;
+    width: 6px;
+    height: 4px;
+    background-color: #ff0000;
+}
+/* --- DISEÑO DEL INDICADOR DE RUTA --- */
+.caja-ruta-exterior {
+    position: absolute;
+    width: 38px;
+    height: 48px;
+    background-color: #000000; /* Caja chapa negra */
+    border: 2px solid #333333;
+    border-radius: 4px;
+    display: none; /* Arranca apagado y oculto por defecto */
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.visor-ruta-interior {
+    width: 28px;
+    height: 38px;
+    background-color: #e6c300; /* Amarillo real de tu foto */
+    border: 2px solid #000000;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.texto-ruta-negro {
+    font-family: 'Courier New', monospace;
+    font-size: 30px;
+    font-weight: 900;
+    color: #000000; /* Letras o números negros */
+    line-height: 1;
+    user-select: none;
+}
+
+</style>
+</head>
+<body>
+
+<div class="map-container">
+    
+    
+
+
+
+<div class="status-container-tig">
+        <div class="status-row"><div class="nombre-grupo">W70/71</div><div id="LW7071P" class="led-rd"></div><b>+</b><div id="LW7071M" class="led-rd"></div><b>-</b><div id="AW7071" class="led-rd"></div><b>A</b></div>
+        <div class="status-row"><div class="nombre-grupo">W74/73</div><div id="LW7473P" class="led-rd"></div><b>+</b><div id="LW7473M" class="led-rd"></div><b>-</b><div id="AW7473" class="led-rd"></div><b>A</b></div>
+        <div class="status-row"><div class="nombre-grupo">W72</div><div id="LW72P" class="led-rd"></div><b>+</b><div id="LW72M" class="led-rd"></div><b>-</b><div id="AW72" class="led-rd"></div><b>A</b></div>
+        <div class="status-row"><div class="nombre-grupo">W75</div><div id="LW75P" class="led-rd"></div><b>+</b><div id="LW75M" class="led-rd"></div><b>-</b><div id="AW75" class="led-rd"></div><b>A</b></div>
+        </div>
+
+
+
+ <div class="cd-via-panelT"><div><div id="led-CDV1_T" class="led-10mm"></div>CDV1</div><div><div id="led-CDV2_T" class="led-10mm"></div>CDV2</div><div><div id="led-RF_T" class="led-10mm"></div>R.F</div><div><div id="led-RU_T" class="led-10mm"></div>R.U</div></div>
+
+
+
+
+   
+<div class="estacion" style="top: 728px; left: 10830px;">TIGRE</div>
+
+
+
+<div class="anden" style="top: 785px; left: 10800px; width: 170px;"></div><div class="anden" style="top: 970px; left: 10800px; width: 170px;"></div><div class="anden" style="top: 1005px; left: 10800px; width: 170px;"></div><div class="anden" style="top: 1190px; left: 10800px; width: 170px;"></div>
+
+
+ 
+  
+    
+
+    <div class="label-plataforma" style="top: 785px; left: 10800px; width: 170px; height: 35px;">PLATAFORMA 1</div>
+    <div class="label-plataforma" style="top: 970px; left: 10800px; width: 170px; height: 35px;">PLATAFORMA 2</div>
+    <div class="label-plataforma" style="top: 1005px; left: 10800px; width: 170px; height: 35px;">PLATAFORMA 3</div>
+    <div class="label-plataforma" style="top: 1190px; left: 10800px; width: 170px; height: 35px;">PLATAFORMA 4</div>
+
+
+<div id="cartel_ruta_tigre" class="caja-ruta-exterior" style="top: 775px; left: 9950px;">
+    <div class="visor-ruta-interior">
+        <div id="texto_ruta_tigre" class="texto-ruta-negro"></div>
+    </div>
+</div>
+
+
+    
+
+
+
+<div id="c191" class="via v-arriba" data-nombre="CDV191" style="top: 850px; left: 9540px; width: 245px;"></div>
+
+<div id="c193" class="via v-arriba" data-nombre="CDV193" style="top: 850px; left: 9790px; width: 220px;"></div>
+
+<div id="w71plus" class="via v-arriba" data-nombre="" style="top: 850px; left: 10045px; width: 260px;"></div>
+
+<div id="w71pm" class="via v-arriba" data-nombre="71" style="top: 850px; left: 10015px; width: 30px;"></div>
+
+<div id="w71minus" class="via diagonal via-fantasma v-abajo"" style="top: 850px; left: 10042px; width: 68px; transform: rotate(45deg);"></div>
+
+
+<div id="w73pm" class="via v-arriba" data-nombre="73" style="top: 850px; left: 10635px; width: 120px;"></div>
+
+<div id="w73plus" class="via v-abajo" data-nombre="" style="top: 850px; left: 10310px; width: 325px;"></div>
+
+<div id="w73minus" class="via diagonal via-fantasma v-abajo" data-nombre="" style="top: 902px; left: 10586px; width: 77px; transform:    rotate(-45deg);"></div>
+
+
+<div id="cz1" class="via v-arriba" data-nombre="CDVZ1" style="top: 850px; left: 10760px; width: 160px;"></div>
+   
+     
+<div id="c192" class="via v-abajo" data-nombre="CDV192" style="top: 950px; left: 9462px; width: 120px;"></div>
+
+
+<div id="c194" class="via v-abajo" data-nombre="CDV194" style="top: 950px; left: 9587px; width: 225px;"></div>
+<div id="c2z2" class="via v-abajo" data-nombre="CDV2Z2" style="top: 950px; left: 9817px; width: 175px;"></div>
+<div id="w70plus" class="via v-abajo" data-nombre="" style="top: 950px; left: 9997px; width: 150px;"></div>
+<div id="w70pm" class="via v-abajo" data-nombre="70" style="top: 950px; left: 10140px; width: 62px;"></div>
+<div id="w70minus" class="via diagonal via-fantasma v-abajo" data-nombre="" style="top: 903px; left: 10095px; width: 68px; transform:rotate(45deg);"></div>
+<div id="ca-tig" class="via v-abajo" data-nombre="CDVA-TIG" style="top: 950px; left: 10207px; width: 95px;"></div>
+<div id="w72pm" class="via v-abajo" data-nombre="72" style="top: 950px; left: 10307px; width: 77px;"></div>
+<div id="w72plus" class="via v-abajo" data-nombre="" style="top: 950px; left: 10384px; width: 98px;"></div>
+<div id="w72minus" class="via diagonal via-fantasma v-abajo" data-nombre="" style="top: 950px; left: 10382px; width: 66px; transform:rotate(45deg);"></div>
+<div id="w74pm" class="via v-abajo" data-nombre="74" style="top: 950px; left: 10487px; width: 50px;"></div>
+<div id="w74plus" class="via v-abajo" data-nombre="" style="top: 950px; left: 10537px; width: 215px;"></div>
+<div id="w74minus" class="via diagonal via-fantasma v-abajo" data-nombre="" style="top: 952px; left: 10536px; width: 66px; transform:rotate(-45deg);"></div>
+<div id="cz2" class="via v-arriba" data-nombre="CDVZ2" style="top: 950px; left: 10757px; width: 160px;"></div>
+
+<div id="w75pm" class="via v-arriba" data-nombre="75" style="top: 1028px; left: 10425px; width: 68px; transform: rotate(45deg);"></div>
+
+<div id="w75plus" class="via v-abajo" data-nombre="" style="top: 1050px; left: 10478px; width: 277px;"></div>
+
+<div id="w75minus" class="via diagonal via-fantasma v-abajo" data-nombre="" style="top: 1050px; left: 10480px; width: 145px; transform:    rotate(45deg);"></div>
+     
+<div id="w75mm" class="via v-arriba" data-nombre="" style="top: 1150px; left: 10580px; width: 175px;"></div>
+
+<div id="cz3" class="via v-abajo" data-nombre="CDVZ3" style="top: 1050px; left: 10760px; width: 160px;"></div>
+
+<div id="cz4" class="via v-abajo" data-nombre="CDVZ4" style="top: 1150px; left: 10760px; width: 160px;"></div
+
+
+
+
+
+
+<div class="paragolpe-diseno" style="top: 845px; left: 10930px;"><div class="union"></div></div>
+<div class="paragolpe-diseno" style="top: 845px; left: 10930px;"><div class="union"></div></div>
+
+<div class="paragolpe-diseno" style="top: 945px; left: 10930px;"><div class="union"></div></div>
+<div class="paragolpe-diseno" style="top: 1045px; left: 10930px;"><div class="union"></div></div>
+<div class="paragolpe-diseno" style="top: 1145px; left: 10930px;"><div class="union"></div></div>
+
+
+  
+
+   
+
+<div class="pan-etiqueta" style="top: 705px; left: 9630px;">MARABOTTO</div><div class="pan-rect" style="top: 650px; left: 9610px;"></div>
+    <div class="ind-pan-container" style="top: 1060px; left: 9610px;"><div id="B_MAR_A" class="ind-alto active"></div><div id="B_MAR_B" class="ind-bajo"></div></div>
+
+
+
+
+
+<div id="sA1-TIG_base" class="senal-unificada f-rojo" style="top: 780px; left: 9790px;"><div class="s-nombre-real">A1-TIG</div><div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div></div>
+
+<div id="s192_base" class="senal-unificada f-rojo sentido-izq nombre-s-abajo" style="top: 985px; left: 9550px;"><div class="s-nombre-real">192</div><div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div></div>
+
+<div id="s194_base" class="senal-unificada f-rojo sentido-izq nombre-s-abajo" style="top: 985px; left: 9775px;"><div class="s-nombre-real">194</div><div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div></div>
+
+<div id="sA-TIG_base" class="senal-unificada f-rojo" style="top: 780px; left: 10015px;"><div class="s-nombre-real">A-TIG</div><div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div></div>
+
+<div id="sZ1-TIG_base" class="senal-unificada f-rojo sentido-izq nombre-s-arriba" style="top: 805px; left: 10720px;"><div class="s-nombre-real">Z1-TIG</div><div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div></div>
+
+
+<div id="sZ2-TIG_base" class="senal-unificada f-rojo sentido-izq nombre-s-arriba" style="top: 905px; left: 10720px;"><div class="s-nombre-real">Z2-TIG</div><div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div></div>
+
+
+<div id="sZ3-TIG_base" class="senal-unificada f-rojo sentido-izq nombre-s-arriba" style="top: 1005px; left: 10720px;"><div class="s-nombre-real">Z3-TIG</div><div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div></div>
+
+
+<div id="sZ4-TIG_base" class="senal-unificada f-rojo sentido-izq nombre-s-arriba" style="top: 1105px; left: 10720px;"><div class="s-nombre-real">Z4-TIG</div><div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div id="s72a_base" class="senal-unificada f-rojo enana" style="top: 915px; left: 9995px;">
+        <div class="s-nombre-real">72A</div>
+        <div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div>
+    </div>
+
+    <div id="s73a_base" class="senal-unificada f-rojo sentido-izq nombre-s-abajo enana" style="top: 865px; left: 10735px;">
+        <div class="s-nombre-real">73A</div>
+        <div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div>
+    </div>
+
+ <div id="s74a_base" class="senal-unificada f-rojo sentido-izq nombre-s-abajo enana" style="top: 965px; left: 10735px;">
+        <div class="s-nombre-real">74A</div>
+        <div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div>
+    </div>
+ <div id="s75b_base" class="senal-unificada f-rojo sentido-izq nombre-s-abajo enana" style="top: 1065px; left: 10735px;">
+        <div class="s-nombre-real">75B</div>
+        <div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div>
+    </div>
+ <div id="s75c_base" class="senal-unificada f-rojo sentido-izq nombre-s-abajo enana" style="top: 1165px; left: 10735px;">
+        <div class="s-nombre-real">75C</div>
+        <div class="s-grafico-real"><div class="t-girada">T</div><div class="circulo-led"></div></div>
+    </div>
+
+
+<div class="nombre-cambio" style="top: 827px; left: 10600px;">w73</div>
+<div class="nombre-cambio" style="top: 925px; left: 10370px;">w72</div>
+<div class="nombre-cambio" style="top: 827px; left: 10050px;">W71</div>
+<div class="nombre-cambio" style="top: 970px; left: 10100px;">w70</div>
+<div class="nombre-cambio" style="top: 970px; left: 10550px;">w74</div>
+<div class="nombre-cambio" style="top: 1070px; left:10440px;">w75</div>
+
+
+<div style="position: absolute; top: 797px; left: 9995px; text-align: center;"><div class="label-enc"></div><div id="ESAT" class="led-enclav"></div></div>
+
+<div style="position: absolute; top: 822px; left: 10760px; text-align: center;"><div class="label-enc"></div><div id="ESZ1" class="led-enclav"></div></div>
+
+<div style="position: absolute; top: 922px; left: 10760px; text-align: center;"><div class="label-enc"></div><div id="ESZ2" class="led-enclav"></div></div>
+
+<div style="position: absolute; top: 1022px; left: 10760px; text-align: center;"><div class="label-enc"></div><div id="ESZ3" class="led-enclav"></div></div>
+
+<div style="position: absolute; top: 1122px; left: 10760px; text-align: center;"><div class="label-enc"></div><div id="ESZ4" class="led-enclav"></div></div>
+
+
+<div style="position: absolute; top: 990px; left: 10107px; text-align: center;"><div class="label-enc"></div><div id="EW70" class="led-enclav"></div></div>
+
+<div style="position: absolute; top: 805px; left: 10057px; text-align: center;"><div class="label-enc"></div><div id="EW71" class="led-enclav"></div></div>
+
+<div style="position: absolute; top: 905px; left: 10377px; text-align: center;"><div class="label-enc"></div><div id="EW72" class="led-enclav"></div></div>
+
+<div style="position: absolute; top: 805px; left: 10607px; text-align: center;"><div class="label-enc"></div><div id="EW73" class="led-enclav"></div></div>
+
+<div style="position: absolute; top: 990px; left: 10557px; text-align: center;"><div class="label-enc"></div><div id="EW74" class="led-enclav"></div></div>
+
+<div style="position: absolute; top: 1090px; left: 10447px; text-align: center;"><div class="label-enc"></div><div id="EW75" class="led-enclav"></div></div>
+
+
+
+
+
+
+
+
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+    var firebaseConfig = {
+        apiKey: "AIzaSyC2V...", 
+        authDomain: "mi-ctc-ferroviario.firebaseapp.com",
+        databaseURL: "https://mi-ctc-ferroviario-default-rtdb.firebaseio.com",
+        projectId: "mi-ctc-ferroviario",
+        storageBucket: "mi-ctc-ferroviario.appspot.com",
+        messagingSenderId: "367332213795",
+        appId: "1:367332213795:web:53177699e19cc174542289"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
+
+    // MEMORIA GLOBAL BELGRANO
+    var curW = "1"; var flagAveria_Bel = 0; var w1_ocupado = false; var w2_ocupado = false;
+    var viasEstadoBel = {}; 
+
+    // MEMORIA GLOBAL OCUPACIONES (Núñez / Olivos / San Isidro)
+    var w10_ocupado = false; var w12_ocupado = false; var w124_ocupado = false;
+    var w20_ocupado = false; var w24_ocupado = false; var w132_ocupado = false;
+    var w30_ocupado = false; var w32_ocupado = false; var w152_ocupado = false;
+
+    // MATRIZ GENERAL DE CAMBIOS ELECTROMECÁNICOS
+    var cambiosNuz = {
+        "1011":   { cur: "1", avg: 0, ocu: false, ids: ['w11plus', 'w11pm', 'w11minus'], leds: ['LW1011P', 'LW1011M', 'AW1011'] },
+        "1215":   { cur: "1", avg: 0, ocu: false, ids: ['w15plus', 'w15pm', 'w15minus'], leds: ['LW1215P', 'LW1215M', 'AW1215'] },
+        "124123": { cur: "1", avg: 0, ocu: false, ids: ['w123plus', 'w123pm', 'w123minus'], leds: ['LW124123P', 'LW124123M', 'AW124123'] },
+        "2021":   { cur: "1", avg: 0, ocu: false, ids: ['w21plus', 'w21pm', 'w21minus'], leds: ['LW2021P', 'LW2021M', 'AW2021'] },
+        "2425":   { cur: "1", avg: 0, ocu: false, ids: ['w25plus', 'w25pm', 'w25minus'], leds: ['LW2425P', 'LW2425M', 'AW2425'] },
+        "132131": { cur: "1", avg: 0, ocu: false, ids: ['w131plus', 'w131pm', 'w131minus'], leds: ['LW132131P', 'LW132131M', 'AW132131'] },
+        "3031":   { cur: "1", avg: 0, ocu: false, ids: ['w31plus', 'w31pm', 'w31minus'], leds: ['LW3031P', 'LW3031M', 'AW3031'] },
+        "3233":   { cur: "1", avg: 0, ocu: false, ids: ['w33plus', 'w33pm', 'w33minus'], leds: ['LW3233P', 'LW3233M', 'AW3233'] },
+        "152m151m": { cur: "1", avg: 0, ocu: false, ids: ['w151mplus', 'w151mpm', 'w151mminus'], leds: ['LW152m151mP', 'LW152m151mM', 'AW152m151m'] },
+        // CAMBIOS SAN FERNANDO
+        "6061":   { cur: "1", avg: 0, ocu: false, ids: ['w61plus', 'w61pm', 'w61minus'], leds: ['LW6061P', 'LW6061M', 'AW6061'] },
+        "6265":   { cur: "1", avg: 0, ocu: false, ids: ['w65plus', 'w65pm', 'w65minus'], leds: ['LW6265P', 'LW6265M', 'AW6265'] },
+// NUEVOS CAMBIOS: TERMINAL TIGRE
+        "7071":   { cur: "1", avg: 0, ocu: false, ids: ['w71plus', 'w71pm', 'w71minus'], leds: ['LW7071P', 'LW7071M', 'AW7071'] },
+        "7473":   { cur: "1", avg: 0, ocu: false, ids: ['w73plus', 'w73pm', 'w73minus'], leds: ['LW7473P', 'LW7473M', 'AW7473'] },
+        "72":     { cur: "1", avg: 0, ocu: false, ids: ['w72plus', 'w72pm', 'w72minus'], leds: ['LW72P', 'LW72M', 'AW72'] },
+        "75":     { cur: "1", avg: 0, ocu: false, ids: ['w75plus', 'w75pm', 'w75minus'], leds: ['LW75P', 'LW75M', 'AW75'] },
+// CAMBIOS VICTORIA (CORREGIDO)
+       
+          "4041": { cur: "1", avg: 0, ocu: false, ids: ['w41plus', 'w41pm', 'w41minus'], leds: ['LW4041P', 'LW4041M', 'AW4041'] },
+        "152":    { cur: "1", avg: 0, ocu: false, ids: ['w152plus', 'w152pm', 'w152minus'], leds: ['LW152P', 'LW152M', 'AW152'] },
+        "43141":  { cur: "1", avg: 0, ocu: false, ids: ['w141plus', 'w141pm', 'w141minus'], leds: ['LW43141P', 'LW43141M', 'AW43141'] },
+        "4545a":  { cur: "1", avg: 0, ocu: false, ids: ['w45aplus', 'w45apm', 'w45aminus'], leds: ['LW4545aP', 'LW4545aM', 'AW4545a'] },
+        "4649":   { cur: "1", avg: 0, ocu: false, ids: ['w46plus', 'w46pm', 'w46minus'], leds: ['LW4649P', 'LW4649M', 'AW4649'] },
+        "5152":   { cur: "1", avg: 0, ocu: false, ids: ['w51plus', 'w51pm', 'w51minus'], leds: ['LW5152P', 'LW5152M', 'AW5152'] },
+        "15454":  { cur: "1", avg: 0, ocu: false, ids: ['w154plus', 'w154pm', 'w154minus'], leds: ['LW15454P', 'LW15454M', 'AW15454'] },
+        "15656b": { cur: "1", avg: 0, ocu: false, ids: ['w56bplus', 'w56bpm', 'w56bminus'], leds: ['LW15656bP', 'LW15656bM', 'AW15656b'] },
+       "50150":  { cur: "1", avg: 0, ocu: false, ids: ['w150plus', 'w150pm', 'w150minus'], leds: ['LW50150P', 'LW50150M', 'AW50150'] },
+       "56a55":  { cur: "1", avg: 0, ocu: false, ids: ['w56aplus', 'w56apm', 'w56aminus'], leds: ['LW56a55P', 'LW56a55M', 'AW56a55'] },
+       "151":    { cur: "1", avg: 0, ocu: false, ids: ['w151plus', 'w151pm', 'w151minus'], leds: ['LW151P', 'LW151M', 'AW151'] },
+       "142":    { cur: "1", avg: 0, ocu: false, ids: ['w142plus', 'w142pm', 'w142minus'], leds: ['LW142P', 'LW142M', 'AW142'] },
+        "53":     { cur: "1", avg: 0, ocu: false, ids: ['w53plus', 'w53pm', 'w53minus'], leds: ['LW53P', 'LW53M', 'AW53'] },
+    "147140": { cur: "1", avg: 0, ocu: false, ids: ['w147plus', 'w147pm', 'w147minus'], leds: ['LW147140P', 'LW147140M', 'AW147140'] },
+    "145":    { cur: "1", avg: 0, ocu: false, ids: ['w145plus', 'w145pm', 'w145minus'], leds: ['LW145P', 'LW145M', 'AW145'] },
+"47143":  { cur: "1", avg: 0, ocu: false, ids: ['w47plus', 'w47pm', 'w47minus'], leds: ['LW47143P', 'LW47143M', 'AW47143'] },
+"4449x":  { cur: "1", avg: 0, ocu: false, ocuAbajo: false, ids: ['w49xplus', 'w49xpm', 'w49xminus'], leds: ['LW4449xP', 'LW4449xM', 'AW4449x'] }
+
+
+    };
+
+        
+
+
+         
+    
+
+    // MATRIZ DE PASOS A NIVEL
+    var panesNuz = {
+        "RAMALLO":     { pos: 0, av: 1, idAlto: 'B_RAM_A', idBajo: 'B_RAM_B' },
+        "ZUFRIATEGUI": { pos: 0, av: 1, idAlto: 'B_ZUF_A', idBajo: 'B_ZUF_B' },
+        "LAPRIDA":     { pos: 0, av: 1, idAlto: 'B_LAP_A', idBajo: 'B_LAP_B' },
+        "ROCA":        { pos: 0, av: 1, idAlto: 'B_ROC_A', idBajo: 'B_ROC_B' },
+        "SAN MARTIN":  { pos: 0, av: 1, idAlto: 'B_SMA_A', idBajo: 'B_SMA_B' },
+        "H.YRIGOYEN":  { pos: 0, av: 1, idAlto: 'B_HYR_A', idBajo: 'B_HYR_B' },
+        "MALAVER":     { pos: 0, av: 1, idAlto: 'B_MAL_A', idBajo: 'B_MAL_B' },
+        "VILLATE":     { pos: 0, av: 1, idAlto: 'B_VIL_A', idBajo: 'B_VIL_B' },
+        "CORRIENTES":  { pos: 0, av: 1, idAlto: 'B_COR_A', idBajo: 'B_COR_B' },
+        "ROMA":        { pos: 0, av: 1, idAlto: 'B_ROM_A', idBajo: 'B_ROM_B' },
+        "DIAZ VELEZ":  { pos: 0, av: 1, idAlto: 'B_DVE_A', idBajo: 'B_DVE_B' },
+        "PACHECO":     { pos: 0, av: 1, idAlto: 'B_PAC_A', idBajo: 'B_PAC_B' },
+        "SARMIENTO":   { pos: 0, av: 1, idAlto: 'B_SAR_A', idBajo: 'B_SAR_B' },
+        "PERU":        { pos: 0, av: 1, idAlto: 'B_PER_A', idBajo: 'B_PER_B' },
+        "ALEM":        { pos: 0, av: 1, idAlto: 'B_ALE_A', idBajo: 'B_ALE_B' },
+        "BELGRANO":    { pos: 0, av: 1, idAlto: 'B_BEL_A', idBajo: 'B_BEL_B' },
+        "AYACUCHO":    { pos: 0, av: 1, idAlto: 'B_AYA_A', idBajo: 'B_AYA_B' },
+        "GUIDO SPANO":     { pos: 0, av: 1, idAlto: 'B_GSP_A', idBajo: 'B_GSP_B' },
+        "MAIPU":       { pos: 0, av: 1, idAlto: 'B_MAI_A', idBajo: 'B_MAI_B' },
+        "9 DE JULIO":    { pos: 0, av: 1, idAlto: 'B_9DJ_A', idBajo: 'B_9DJ_B' },
+        "ALVEAR":      { pos: 0, av: 1, idAlto: 'B_AVR_A', idBajo: 'B_AVR_B' },
+        "RIVADAVIA":   { pos: 0, av: 1, idAlto: 'B_RIV_A', idBajo: 'B_RIV_B' },
+        "MARABOTTO":   { pos: 0, av: 1, idAlto: 'B_MAR_A', idBajo: 'B_MAR_B' },
+
+
+
+    };
+
+    var tic = true;
+
+   setInterval(function() {
+        tic = !tic;
+        pW();
+        Object.keys(cambiosNuz).forEach(actualizarChangeNuz);
+        Object.keys(panesNuz).forEach(actualizarPAN);
+        // ==================================================================
+        // ACOPLAMIENTO DE VÍA ESPEJO: EL W43 COPIA AL W141 MELLIZO
+        // ==================================================================
+                var el141plus = document.getElementById('w141plus');
+        var el141minus = document.getElementById('w141minus');
+        
+        var el43pm = document.getElementById('w43pm');
+        var el43plus = document.getElementById('w43plus');
+        var el43minus = document.getElementById('w43minus');
+
+                // ==================================================================
+        // ACOPLAMIENTO DE VÍA ESPEJO: CONTINUACIÓN DE AGUJA (W45MINUS -> W45AMM)
+        // ==================================================================
+        var elMinus = document.getElementById('w45minus');
+        var elAmm = document.getElementById('w45amm');
+        if (elMinus && elAmm) {
+            // Le calcamos exactamente el mismo estado visual que calculó el script para el 45minus
+            elAmm.className = elMinus.className;
+            
+            // Le obligamos a mantener la clase diagonal para que no pierda el estilo CSS
+            elAmm.classList.add('diagonal');
+        }
+        // ==================================================================
+    }, 500);
+
+    function actualizarPAN(nombrePan) {
+        var p = panesNuz[nombrePan]; if(!p) return;
+        var elAlto = document.getElementById(p.idAlto);
+        var elBajo = document.getElementById(p.idBajo);
+        if(!elAlto || !elBajo) return;
+
+        elAlto.className = "ind-alto";
+        elBajo.className = "ind-bajo";
+
+        if (p.pos === 0) {
+            if (p.av === 1 || (p.av === 0 && tic)) elAlto.classList.add('pan-amarillo-on');
+        } else if (p.pos === 1) {
+            if (p.av === 1 || (p.av === 0 && tic)) elBajo.classList.add('pan-rojo-on');
+        }
+    }
+
+   function pW() {
+        var v1p = document.getElementById('w1plus'), v1m = document.getElementById('w1minus'), v1pm = document.getElementById('w1pm');
+        var v2p = document.getElementById('w2plus'), v2m = document.getElementById('w2minus'), v2pm = document.getElementById('w2pm');
+        var lp = document.getElementById('LW12P'), lm = document.getElementById('LW12M');
+        var lAveria = document.getElementById('AW12');
+
+        if(!v1p || !v2p || !v1pm || !v2pm) return;
+        
+        if(lp && lm) lp.className = lm.className = "led-rd";
+        if(lAveria) lAveria.className = (flagAveria_Bel === 1) ? "led-rd l-red" : "led-rd";
+
+        if (curW === "1" || curW === 1) { if(lp) lp.classList.add('l-white'); } 
+        else { if(lm) lm.classList.add('l-white'); }
+
+        v1p.className = "via v-arriba"; v1m.className = "via diagonal v-arriba"; v1pm.className = "via v-arriba";
+        v2p.className = "via v-abajo"; v2m.className = "via diagonal v-abajo"; v2pm.className = "via v-abajo";
+
+        if (curW === "1" || curW === 1) {
+            v1m.classList.add('via-fantasma'); 
+            v2m.classList.add('via-fantasma');
+
+            if (!w1_ocupado) {
+                if (flagAveria_Bel === 1 && tic) {
+                    v1pm.classList.add('via-fantasma'); v1p.classList.add('via-fantasma');
+                } else {
+                    v1pm.classList.add('libre'); v1p.classList.add('libre');
+                }
+            } else {
+                if (flagAveria_Bel === 1 && tic) {
+                    v1pm.classList.add('via-fantasma'); v1p.classList.add('via-fantasma');
+                }
+            }
+
+            if (!w2_ocupado) {
+                if (flagAveria_Bel === 1 && tic) {
+                    v2pm.classList.add('via-fantasma'); v2p.classList.add('via-fantasma');
+                } else {
+                    v2pm.classList.add('libre'); v2p.classList.add('libre');
+                }
+            } else {
+                if (flagAveria_Bel === 1 && tic) {
+                    v2pm.classList.add('via-fantasma'); v2p.classList.add('via-fantasma');
+                }
+            }
+
+        } else {
+            v1p.classList.add('via-fantasma'); 
+            v2p.classList.add('via-fantasma');
+
+            if (!w1_ocupado) {
+                if (flagAveria_Bel === 1 && tic) {
+                    v1pm.classList.add('via-fantasma'); v1m.classList.add('via-fantasma');
+                } else {
+                    v1pm.classList.add('libre'); v1m.classList.add('libre');
+                }
+            } else {
+                if (flagAveria_Bel === 1 && tic) {
+                    v1pm.classList.add('via-fantasma'); v1m.classList.add('via-fantasma');
+                }
+            }
+
+            if (!w2_ocupado) {
+                if (flagAveria_Bel === 1 && tic) {
+                    v2pm.classList.add('via-fantasma'); v2m.classList.add('via-fantasma');
+                } else {
+                    v2pm.classList.add('libre'); v2m.classList.add('libre');
+                }
+            } else {
+                if (flagAveria_Bel === 1 && tic) {
+                    v2pm.classList.add('via-fantasma'); v2m.classList.add('via-fantasma');
+                }
+            }
+        }
+
+        Object.keys(viasEstadoBel).forEach(function(id) {
+            if(!["w1plus", "w1minus", "w2plus", "w2minus", "w1pm", "w2pm"].includes(id)) {
+                var el = document.getElementById(id); if(el) el.classList.toggle('libre', viasEstadoBel[id] === 0);
+            }
+        });
+    }
+
+   function actualizarChangeNuz(idW) {
+        var c = cambiosNuz[idW]; if (!c) return;
+        
+        var wArribaP = document.getElementById(c.ids[0]), wArribaM = document.getElementById(c.ids[2]), wArribaPm = document.getElementById(c.ids[1]);
+        var lP = document.getElementById(c.leds[0]), lM = document.getElementById(c.leds[1]), lA = document.getElementById(c.leds[2]);
+        
+        var wAbajoP = null, wAbajoM = null, wAbajoPm = null; var ocuAbajo = false;
+
+        // --- 1. ASIGNACIÓN EXCLUSIVA PARA CRUZAMIENTOS DOBLES (Núñez, Olivos, San Isidro) ---
+        if(idW === "1011") { wAbajoP = document.getElementById('w10plus'); wAbajoM = document.getElementById('w10minus'); wAbajoPm = document.getElementById('w10pm'); ocuAbajo = w10_ocupado; } 
+        else if(idW === "1215") { wAbajoP = document.getElementById('w12plus'); wAbajoM = document.getElementById('w12minus'); wAbajoPm = document.getElementById('w12pm'); ocuAbajo = w12_ocupado; } 
+        else if(idW === "124123") { wAbajoP = document.getElementById('w124plus'); wAbajoM = document.getElementById('w124minus'); wAbajoPm = document.getElementById('w124pm'); ocuAbajo = w124_ocupado; }
+        else if(idW === "2021") { wAbajoP = document.getElementById('w20plus'); wAbajoM = document.getElementById('w20minus'); wAbajoPm = document.getElementById('w20pm'); ocuAbajo = w20_ocupado; }
+        else if(idW === "2425") { wAbajoP = document.getElementById('w24plus'); wAbajoM = document.getElementById('w24minus'); wAbajoPm = document.getElementById('w24pm'); ocuAbajo = w24_ocupado; }
+        else if(idW === "132131") { wAbajoP = document.getElementById('w132plus'); wAbajoM = document.getElementById('w132minus'); wAbajoPm = document.getElementById('w132pm'); ocuAbajo = w132_ocupado; }
+        else if(idW === "3031") { wAbajoP = document.getElementById('w30plus'); wAbajoM = document.getElementById('w30minus'); wAbajoPm = document.getElementById('w30pm'); ocuAbajo = w30_ocupado; } 
+        else if(idW === "3233") { wAbajoP = document.getElementById('w32plus'); wAbajoM = document.getElementById('w32minus'); wAbajoPm = document.getElementById('w32pm'); ocuAbajo = w32_ocupado; } 
+        // >> MARTÍNEZ (152m151m) - BLINDADO PARA QUE NO CLAVE EL SCRIPT
+        else if(idW === "152m151m") { 
+            wAbajoP = document.getElementById('w152mplus'); 
+            wAbajoM = document.getElementById('w152mminus'); 
+            wAbajoPm = document.getElementById('w152mpm'); 
+            
+            // CORRECCIÓN SEGURO: Si la variable no existe, devuelve false en vez de romper todo
+            ocuAbajo = (typeof w152m_ocupado !== 'undefined' ? w152m_ocupado : false); 
+        }
+        
+        // --- 2. ASIGNACIÓN PARA DESVÍOS SIMPLES CON RELACIÓN DE "VÍA DE ABAJO" ---
+     // >> VICTORIA: ESCAPE ACOPLADO COMPLETO W40 / W41
+       // Tu Punto 2 actual:
+// ==================================================================
+        // METRO DE VICTORIA: BLOQUE UNIFICADO Y SANEADO
+        // ==================================================================
+        
+       // >> VICTORIA: CONTROL GEOMÉTRICO ABSOLUTO ESCAPE W40 / W41 (CON DESTELLO DE AVERÍA)
+        else if(idW === "4041") { 
+            // 1. Capturamos los elementos reales del mapa
+            var el41plus  = document.getElementById('w41plus'); 
+            var el41minus = document.getElementById('w41minus'); 
+            var el41pm    = document.getElementById('w41pm'); 
+            
+            var el40plus  = document.getElementById('w40plus');
+            var el40minus = document.getElementById('w40minus');
+            var el40pm    = document.getElementById('w40pm'); 
+            
+            // 2. Capturamos las luces del tablero azul
+            var lP = document.getElementById('LW4041P'), lM = document.getElementById('LW4041M'), lA = document.getElementById('AW4041');
+            
+            // 3. Leemos las ocupaciones y estados que llegan de Firebase
+            var ocu41 = (cambiosNuz["4041"] ? cambiosNuz["4041"].ocu : false);
+            var ocu40 = (cambiosNuz["4041"] ? cambiosNuz["4041"].ocuAbajo : false);
+            var esAveria = (c.avg === 1 || c.avg === "1"); // ¿El aparato está en avería?
+            
+            var col41 = ocu41 ? 'ocupado' : 'libre';
+            var col40 = ocu40 ? 'ocupado' : 'libre';
+
+            // 4. Control de luces del tablero azul (El led rojo de avería)
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+            
+            if (c.cur === "1" || c.cur === 1) { if(lP) lP.classList.add('l-white'); } 
+            else { if(lM) lM.classList.add('l-white'); }
+
+            // 5. Renderizado físico en el mapa con filtro de destello (tic)
+            if (c.cur === "1" || c.cur === 1) {
+                // --- POSICIÓN NORMAL (+) ---
+                if(el41minus) el41minus.className = "via diagonal via-fantasma v-arriba";
+                if(el40minus) el40minus.className = "via diagonal via-fantasma v-abajo";
+
+                // Si hay avería y el "tic" está apagado, extinguimos la vía (efecto parpadeo)
+                if (esAveria && tic) {
+                    if(el41pm)   el41pm.className   = "via v-arriba via-fantasma";
+                    if(el41plus) el41plus.className = "via v-arriba via-fantasma";
+                    if(el40pm)   el40pm.className   = "via v-abajo via-fantasma";
+                    if(el40plus) el40plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el41pm)   el41pm.className   = "via v-arriba " + col41;
+                    if(el41plus) el41plus.className = "via v-arriba " + col41;
+                    if(el40pm)   el40pm.className   = "via v-abajo " + col40;
+                    if(el40plus) el40plus.className = "via v-abajo " + col40;
+                }
+            } else {
+                // --- POSICIÓN INVERTIDA (-) ---
+                if(el41plus) el41plus.className = "via v-arriba via-fantasma";
+                if(el40plus) el40plus.className = "via v-abajo via-fantasma";
+
+                // Si hay avería y el "tic" está apagado, extinguimos la aguja y la diagonal
+                if (esAveria && tic) {
+                    if(el41pm)    el41pm.className    = "via v-arriba via-fantasma";
+                    if(el41minus) el41minus.className = "via diagonal v-arriba via-fantasma";
+                    if(el40pm)    el40pm.className    = "via v-abajo via-fantasma";
+                    if(el40minus) el40minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el41pm)    el41pm.className    = "via v-arriba " + col41;
+                    if(el41minus) el41minus.className = "via diagonal v-arriba " + col41;
+                    if(el40pm)    el40pm.className    = "via v-abajo " + col40;
+                    if(el40minus) el40minus.className = "via diagonal v-abajo " + col40;
+                }
+            }
+
+            return; // Candado para el 4041
+        }
+
+    // >> 2. EL CAMBIO SIMPLE W152 (SANEADO GENERAL Y PARPADEO)
+        else if(idW === "152") {
+            // 1. Capturamos las piezas físicas del mapa HTML
+            var el152plus  = document.getElementById('w152plus');  
+            var el152minus = document.getElementById('w152minus'); 
+            var el152pm    = document.getElementById('w152pm');    
+            
+            // 2. Capturamos las luces del tablero azul
+            var lP = document.getElementById('LW152P'), lM = document.getElementById('LW152M'), lA = document.getElementById('AW152');
+            
+            // 3. Lectura directa de la matriz general
+            var pos152   = cambiosNuz["152"] ? cambiosNuz["152"].cur : "1";
+            var avg152   = cambiosNuz["152"] ? cambiosNuz["152"].avg : 0;
+            var ocu152   = cambiosNuz["152"] ? cambiosNuz["152"].ocu : false; // Devolvemos el automatismo del sensor
+            
+            var esAveria = (avg152 === 1 || avg152 === "1" || avg152 === true); 
+            var colorCvd = ocu152 ? 'ocupado' : 'libre'; 
+            
+            // 4. Control de luces del tablero azul
+            if(lP && lM) {
+                lP.className = "led-rd";
+                lM.className = "led-rd";
+            }
+            
+            // Encendemos el led de avería si existe en el HTML
+            if(lA) {
+                lA.className = esAveria ? "led-rd l-red" : "led-rd";
+            }
+            
+            // Encendemos el testigo de posición (+ o -) en blanco
+            if (pos152 === "1" || pos152 === 1) { 
+                if(lP) lP.classList.add('l-white'); 
+            } else { 
+                if(lM) lM.classList.add('l-white'); 
+            }
+            
+            // 5. Renderizado físico en el mapa con destello independiente
+            if (pos152 === "1" || pos152 === 1) {
+                // --- POSICIÓN NORMAL (+) ---
+                if(el152minus) el152minus.className = "via diagonal v-abajo via-fantasma";
+                
+                if (esAveria && tic) {
+                    // En el pulso del tic, apagamos la vía para generar el parpadeo
+                    if(el152pm)   el152pm.className   = "via v-abajo via-fantasma";
+                    if(el152plus) el152plus.className = "via v-abajo via-fantasma";
+                } else {
+                    // Muestra el color real según el estado del circuito
+                    if(el152pm)   el152pm.className   = "via v-abajo " + colorCvd;
+                    if(el152plus) el152plus.className = "via v-abajo " + colorCvd;
+                }
+            } else {
+                // --- POSICIÓN INVERTIDA (-) ---
+                if(el152plus) el152plus.className = "via v-abajo via-fantasma";
+                
+                if (esAveria && tic) {
+                    if(el152pm)    el152pm.className    = "via v-abajo via-fantasma";
+                    if(el152minus) el152minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el152pm)    el152pm.className    = "via v-abajo " + colorCvd;
+                    if(el152minus) el152minus.className = "via diagonal v-abajo " + colorCvd;
+                }
+            }
+            
+            return; // Candado para el 152
+        }
+
+// >> 3. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W43 / W141 (BLINDADO)
+        else if(idW === "43141") {
+            var el141plus  = document.getElementById('w141plus'); 
+            var el141minus = document.getElementById('w141minus'); 
+            var el141pm    = document.getElementById('w141pm'); 
+            var el43plus   = document.getElementById('w43plus');
+            var el43minus  = document.getElementById('w43minus');
+            var el43pm     = document.getElementById('w43pm'); 
+            
+            var lP = document.getElementById('LW43141P'), lM = document.getElementById('LW43141M'), lA = document.getElementById('AW43141');
+            
+            var pos43 = c.cur;
+            var avg43 = c.avg;
+            var ocu141 = c.ocu;
+            var ocu43  = c.ocuAbajo;
+            
+            var esAveria = (avg43 === 1 || avg43 === "1" || avg43 === true);
+            var col141 = ocu141 ? 'ocupado' : 'libre';
+            var col43  = ocu43 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+            
+            if (pos43 === "1" || pos43 === 1) { if(lP) lP.classList.add('l-white'); } 
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos43 === "1" || pos43 === 1) {
+                if(el141minus) el141minus.className = "via diagonal via-fantasma v-arriba";
+                if(el43minus)  el43minus.className  = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el141pm) el141pm.className = "via v-arriba via-fantasma";
+                    if(el141plus) el141plus.className = "via v-arriba via-fantasma";
+                    if(el43pm) el43pm.className = "via v-abajo via-fantasma";
+                    if(el43plus) el43plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el141pm) el141pm.className = "via v-arriba " + col141;
+                    if(el141plus) el141plus.className = "via v-arriba " + col141;
+                    if(el43pm) el43pm.className = "via v-abajo " + col43;
+                    if(el43plus) el43plus.className = "via v-abajo " + col43;
+                }
+            } else {
+                if(el141plus) el141plus.className = "via v-arriba via-fantasma";
+                if(el43plus)  el43plus.className  = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el141pm) el141pm.className = "via v-arriba via-fantasma";
+                    if(el141minus) el141minus.className = "via diagonal v-arriba via-fantasma";
+                    if(el43pm) el43pm.className = "via v-abajo via-fantasma";
+                    if(el43minus) el43minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el141pm) el141pm.className = "via v-arriba " + col141;
+                    if(el141minus) el141minus.className = "via diagonal v-arriba " + col141;
+                    if(el43pm) el43pm.className = "via v-abajo " + col43;
+                    if(el43minus) el43minus.className = "via diagonal v-abajo " + col43;
+                }
+            }
+            return; // Candado definitivo para el 43141
+        }
+
+        // >> 4. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W45 / W45A (BLINDADO)
+        else if(idW === "4545a") {
+            var el45aplus  = document.getElementById('w45aplus');
+            var el45aminus = document.getElementById('w45aminus');
+            var el45apm    = document.getElementById('w45apm');
+            var el45plus   = document.getElementById('w45plus');
+            var el45minus  = document.getElementById('w45minus');
+            var el45pm     = document.getElementById('w45pm');
+
+            var lP = document.getElementById('LW4545aP'), lM = document.getElementById('LW4545aM'), lA = document.getElementById('AW4545a');
+
+            var pos45 = c.cur;
+            var avg45 = c.avg;
+            var ocu45a = c.ocu;
+            var ocu45  = c.ocuAbajo;
+
+            var esAveria = (avg45 === 1 || avg45 === "1" || avg45 === true);
+            var col45a = ocu45a ? 'ocupado' : 'libre';
+            var col45  = ocu45 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos45 === "1" || pos45 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos45 === "1" || pos45 === 1) {
+                if(el45aminus) el45aminus.className = "via diagonal via-fantasma v-arriba";
+                if(el45minus)  el45minus.className  = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el45apm) el45apm.className = "via v-arriba via-fantasma";
+                    if(el45aplus) el45aplus.className = "via v-arriba via-fantasma";
+                    if(el45pm) el45pm.className = "via v-abajo via-fantasma";
+                    if(el45plus) el45plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el45apm) el45apm.className = "via v-arriba " + col45a;
+                    if(el45aplus) el45aplus.className = "via v-arriba " + col45a;
+                    if(el45pm) el45pm.className = "via v-abajo " + col45;
+                    if(el45plus) el45plus.className = "via v-abajo " + col45;
+                }
+            } else {
+                if(el45aplus) el45aplus.className = "via v-arriba via-fantasma";
+                if(el45plus)  el45plus.className  = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el45apm) el45apm.className = "via v-arriba via-fantasma";
+                    if(el45aminus) el45aminus.className = "via diagonal v-arriba via-fantasma";
+                    if(el45pm) el45pm.className = "via v-abajo via-fantasma";
+                    if(el45minus) el45minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el45apm) el45apm.className = "via v-arriba " + col45a;
+                    if(el45aminus) el45aminus.className = "via diagonal v-arriba " + col45a;
+                    if(el45pm) el45pm.className = "via v-abajo " + col45;
+                    if(el45minus) el45minus.className = "via diagonal v-abajo " + col45;
+                }
+            }
+            return; // Candado definitivo para el 4545a
+        }
+
+        // >> 5. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W46 / W49 (BLINDADO)
+        else if(idW === "4649") {
+            var el46plus   = document.getElementById('w46plus');
+            var el46minus  = document.getElementById('w46minus');
+            var el46pm     = document.getElementById('w46pm');
+            var el49plus   = document.getElementById('w49plus');
+            var el49minus  = document.getElementById('w49minus');
+            var el49pm     = document.getElementById('w49pm');
+
+            var lP = document.getElementById('LW4649P'), lM = document.getElementById('LW4649M'), lA = document.getElementById('AW4649');
+
+            var pos46 = c.cur;
+            var avg46 = c.avg;
+            var ocu46 = c.ocu;
+            var ocu49 = c.ocuAbajo;
+
+            var esAveria = (avg46 === 1 || avg46 === "1" || avg46 === true);
+            var col46 = ocu46 ? 'ocupado' : 'libre';
+            var col49 = ocu49 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos46 === "1" || pos46 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos46 === "1" || pos46 === 1) {
+                if(el46minus) el46minus.className = "via diagonal via-fantasma v-arriba";
+                if(el49minus) el49minus.className = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el46pm) el46pm.className = "via v-arriba via-fantasma";
+                    if(el46plus) el46plus.className = "via v-arriba via-fantasma";
+                    if(el49pm) el49pm.className = "via v-abajo via-fantasma";
+                    if(el49plus) el49plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el46pm) el46pm.className = "via v-arriba " + col46;
+                    if(el46plus) el46plus.className = "via v-arriba " + col46;
+                    if(el49pm) el49pm.className = "via v-abajo " + col49;
+                    if(el49plus) el49plus.className = "via v-abajo " + col49;
+                }
+            } else {
+                if(el46plus) el46plus.className = "via v-arriba via-fantasma";
+                if(el49plus) el49plus.className = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el46pm) el46pm.className = "via v-arriba via-fantasma";
+                    if(el46minus) el46minus.className = "via diagonal v-arriba via-fantasma";
+                    if(el49pm) el49pm.className = "via v-abajo via-fantasma";
+                    if(el49minus) el49minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el46pm) el46pm.className = "via v-arriba " + col46;
+                    if(el46minus) el46minus.className = "via diagonal v-arriba " + col46;
+                    if(el49pm) el49pm.className = "via v-abajo " + col49;
+                    if(el49minus) el49minus.className = "via diagonal v-abajo " + col49;
+                }
+            }
+            return; // Candado definitivo para el 4649
+        }
+        // >> 6. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W51 / W52 (BLINDADO)
+        else if(idW === "5152") {
+            var el51plus   = document.getElementById('w51plus');
+            var el51minus  = document.getElementById('w51minus');
+            var el51pm     = document.getElementById('w51pm');
+            var el52plus   = document.getElementById('w52plus');
+            var el52minus  = document.getElementById('w52minus');
+            var el52pm     = document.getElementById('w52pm');
+
+            var lP = document.getElementById('LW5152P'), lM = document.getElementById('LW5152M'), lA = document.getElementById('AW5152');
+
+            var pos51 = c.cur;
+            var avg51 = c.avg;
+            var ocu51 = c.ocu;
+            var ocu52 = c.ocuAbajo;
+
+            var esAveria = (avg51 === 1 || avg51 === "1" || avg51 === true);
+            var col51 = ocu51 ? 'ocupado' : 'libre';
+            var col52 = ocu52 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos51 === "1" || pos51 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos51 === "1" || pos51 === 1) {
+                if(el51minus) el51minus.className = "via diagonal via-fantasma v-abajo";
+                if(el52minus) el52minus.className = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el51pm) el51pm.className = "via v-abajo via-fantasma";
+                    if(el51plus) el51plus.className = "via v-abajo via-fantasma";
+                    if(el52pm) el52pm.className = "via v-abajo via-fantasma";
+                    if(el52plus) el52plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el51pm) el51pm.className = "via v-abajo " + col51;
+                    if(el51plus) el51plus.className = "via v-abajo " + col51;
+                    if(el52pm) el52pm.className = "via v-abajo " + col52;
+                    if(el52plus) el52plus.className = "via v-abajo " + col52;
+                }
+            } else {
+                if(el51plus) el51plus.className = "via v-abajo via-fantasma";
+                if(el52plus) el52plus.className = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el51pm) el51pm.className = "via v-abajo via-fantasma";
+                    if(el51minus) el51minus.className = "via diagonal v-abajo via-fantasma";
+                    if(el52pm) el52pm.className = "via v-abajo via-fantasma";
+                    if(el52minus) el52minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el51pm) el51pm.className = "via v-abajo " + col51;
+                    if(el51minus) el51minus.className = "via diagonal v-abajo " + col51;
+                    if(el52pm) el52pm.className = "via v-abajo " + col52;
+                    if(el52minus) el52minus.className = "via diagonal v-abajo " + col52;
+                }
+            }
+            return; // Candado definitivo para el 5152
+        }
+// >> 7. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W154 / W54 (BLINDADO)
+        else if(idW === "15454") {
+            var el54plus   = document.getElementById('w54plus');
+            var el54minus  = document.getElementById('w54minus');
+            var el54pm     = document.getElementById('w54pm');
+            var el154plus  = document.getElementById('w154plus');
+            var el154minus = document.getElementById('w154minus');
+            var el154pm    = document.getElementById('w154pm');
+
+            var lP = document.getElementById('LW15454P'), lM = document.getElementById('LW15454M'), lA = document.getElementById('AW15454');
+
+            var pos54 = c.cur;
+            var avg54 = c.avg;
+            var ocu54 = c.ocu;
+            var ocu154 = c.ocuAbajo;
+
+            var esAveria = (avg54 === 1 || avg54 === "1" || avg46 === true);
+            var col54 = ocu54 ? 'ocupado' : 'libre';
+            var col154 = ocu154 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos54 === "1" || pos54 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos54 === "1" || pos54 === 1) {
+                if(el54minus)  el54minus.className  = "via diagonal via-fantasma v-arriba";
+                if(el154minus) el154minus.className = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el54pm) el54pm.className = "via v-arriba via-fantasma";
+                    if(el54plus) el54plus.className = "via v-arriba via-fantasma";
+                    if(el154pm) el154pm.className = "via v-abajo via-fantasma";
+                    if(el154plus) el154plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el54pm) el54pm.className = "via v-arriba " + col54;
+                    if(el54plus) el54plus.className = "via v-arriba " + col54;
+                    if(el154pm) el154pm.className = "via v-abajo " + col154;
+                    if(el154plus) el154plus.className = "via v-abajo " + col154;
+                }
+            } else {
+                if(el54plus)  el54plus.className  = "via v-arriba via-fantasma";
+                if(el154plus) el154plus.className = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el54pm) el54pm.className = "via v-arriba via-fantasma";
+                    if(el54minus) el54minus.className = "via diagonal v-arriba via-fantasma";
+                    if(el154pm) el154pm.className = "via v-abajo via-fantasma";
+                    if(el154minus) el154minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el54pm) el54pm.className = "via v-arriba " + col54;
+                    if(el54minus) el54minus.className = "via diagonal v-arriba " + col54;
+                    if(el154pm) el154pm.className = "via v-abajo " + col154;
+                    if(el154minus) el154minus.className = "via diagonal v-abajo " + col154;
+                }
+            }
+            return; // Candado definitivo para el 15454
+        }      
+  // >> 8. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W156 / W56b (BLINDADO)
+        else if(idW === "15656b") {
+            var el56bplus  = document.getElementById('w56bplus');
+            var el56bminus = document.getElementById('w56bminus');
+            var el56bpm    = document.getElementById('w56bpm');
+            var el156plus  = document.getElementById('w156plus');
+            var el156minus = document.getElementById('w156minus');
+            var el156pm    = document.getElementById('w156pm');
+
+            var lP = document.getElementById('LW15656bP'), lM = document.getElementById('LW15656bM'), lA = document.getElementById('AW15656b');
+
+            var pos56b = c.cur;
+            var avg56b = c.avg;
+            var ocu56b = c.ocu;
+            var ocu156 = c.ocuAbajo;
+
+            var esAveria = (avg56b === 1 || avg56b === "1" || avg56b === true);
+            var col56b = ocu56b ? 'ocupado' : 'libre';
+            var col156 = ocu156 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos56b === "1" || pos56b === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos56b === "1" || pos56b === 1) {
+                if(el56bminus)  el56bminus.className  = "via diagonal via-fantasma v-arriba";
+                if(el156minus) el156minus.className = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el56bpm) el56bpm.className = "via v-arriba via-fantasma";
+                    if(el56bplus) el56bplus.className = "via v-arriba via-fantasma";
+                    if(el156pm) el156pm.className = "via v-abajo via-fantasma";
+                    if(el156plus) el156plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el56bpm) el56bpm.className = "via v-arriba " + col56b;
+                    if(el56bplus) el56bplus.className = "via v-arriba " + col56b;
+                    if(el156pm) el156pm.className = "via v-abajo " + col156;
+                    if(el156plus) el156plus.className = "via v-abajo " + col156;
+                }
+            } else {
+                if(el56bplus)  el56bplus.className  = "via v-arriba via-fantasma";
+                if(el156plus) el156plus.className = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el56bpm) el56bpm.className = "via v-arriba via-fantasma";
+                    if(el56bminus) el56bminus.className = "via diagonal v-arriba via-fantasma";
+                    if(el156pm) el156pm.className = "via v-abajo via-fantasma";
+                    if(el156minus) el156minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el56bpm) el56bpm.className = "via v-arriba " + col56b;
+                    if(el56bminus) el56bminus.className = "via diagonal v-arriba " + col56b;
+                    if(el156pm) el156pm.className = "via v-abajo " + col156;
+                    if(el156minus) el156minus.className = "via diagonal v-abajo " + col156;
+                }
+            }
+            return; // Candado definitivo para el 15656b
+        }
+        // >> 9. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W50 / W150 (BLINDADO)
+        else if(idW === "50150") {
+            var el150plus  = document.getElementById('w150plus');
+            var el150minus = document.getElementById('w150minus');
+            var el150pm    = document.getElementById('w150pm');
+            var el50plus   = document.getElementById('w50plus');
+            var el50minus  = document.getElementById('w50minus');
+            var el50pm     = document.getElementById('w50pm');
+
+            var lP = document.getElementById('LW50150P'), lM = document.getElementById('LW50150M'), lA = document.getElementById('AW50150');
+
+            var pos50 = c.cur;
+            var avg50 = c.avg;
+            var ocu150 = c.ocu;
+            var ocu50  = c.ocuAbajo;
+
+            var esAveria = (avg50 === 1 || avg50 === "1" || avg50 === true);
+            var col150 = ocu150 ? 'ocupado' : 'libre';
+            var col50  = ocu50 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos50 === "1" || pos50 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos50 === "1" || pos50 === 1) {
+                if(el150minus) el150minus.className = "via diagonal via-fantasma v-arriba";
+                if(el50minus)  el50minus.className  = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el150pm) el150pm.className = "via v-arriba via-fantasma";
+                    if(el150plus) el150plus.className = "via v-arriba via-fantasma";
+                    if(el50pm) el50pm.className = "via v-abajo via-fantasma";
+                    if(el50plus) el50plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el150pm) el150pm.className = "via v-arriba " + col150;
+                    if(el150plus) el150plus.className = "via v-arriba " + col150;
+                    if(el50pm) el50pm.className = "via v-abajo " + col50;
+                    if(el50plus) el50plus.className = "via v-abajo " + col50;
+                }
+            } else {
+                if(el150plus) el150plus.className = "via v-arriba via-fantasma";
+                if(el50plus)  el50plus.className  = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el150pm) el150pm.className = "via v-arriba via-fantasma";
+                    if(el150minus) el150minus.className = "via diagonal v-arriba via-fantasma";
+                    if(el50pm) el50pm.className = "via v-abajo via-fantasma";
+                    if(el50minus) el50minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el150pm) el150pm.className = "via v-arriba " + col150;
+                    if(el150minus) el150minus.className = "via diagonal v-arriba " + col150;
+                    if(el50pm) el50pm.className = "via v-abajo " + col50;
+                    if(el50minus) el50minus.className = "via diagonal v-abajo " + col50;
+                }
+            }
+            return; // Candado definitivo para el 50150
+        }
+        // >> 10. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W56a / W55 (BLINDADO)
+        else if(idW === "56a55") {
+            var el56aplus  = document.getElementById('w56aplus');
+            var el56aminus = document.getElementById('w56aminus');
+            var el56apm    = document.getElementById('w56apm');
+            var el55plus   = document.getElementById('w55plus');
+            var el55minus  = document.getElementById('w55minus');
+            var el55pm     = document.getElementById('w55pm');
+
+            var lP = document.getElementById('LW56a55P'), lM = document.getElementById('LW56a55M'), lA = document.getElementById('AW56a55');
+
+            var pos56a = c.cur;
+            var avg56a = c.avg;
+            var ocu56a = c.ocu;
+            var ocu55  = c.ocuAbajo;
+
+            var esAveria = (avg56a === 1 || avg56a === "1" || avg56a === true);
+            var col56a = ocu56a ? 'ocupado' : 'libre';
+            var col55  = ocu55 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos56a === "1" || pos56a === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos56a === "1" || pos56a === 1) {
+                if(el56aminus) el56aminus.className = "via diagonal via-fantasma v-arriba";
+                if(el55minus)  el55minus.className  = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el56apm) el56apm.className = "via v-arriba via-fantasma";
+                    if(el56aplus) el56aplus.className = "via v-arriba via-fantasma";
+                    if(el55pm) el55pm.className = "via v-abajo via-fantasma";
+                    if(el55plus) el55plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el56apm) el56apm.className = "via v-arriba " + col56a;
+                    if(el56aplus) el56aplus.className = "via v-arriba " + col56a;
+                    if(el55pm) el55pm.className = "via v-abajo " + col55;
+                    if(el55plus) el55plus.className = "via v-abajo " + col55;
+                }
+            } else {
+                if(el56aplus) el56aplus.className = "via v-arriba via-fantasma";
+                if(el55plus)  el55plus.className  = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el56apm) el56apm.className = "via v-arriba via-fantasma";
+                    if(el56aminus) el56aminus.className = "via diagonal v-arriba via-fantasma";
+                    if(el55pm) el55pm.className = "via v-abajo via-fantasma";
+                    if(el55minus) el55minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el56apm) el56apm.className = "via v-arriba " + col56a;
+                    if(el56aminus) el56aminus.className = "via diagonal v-arriba " + col56a;
+                    if(el55pm) el55pm.className = "via v-abajo " + col55;
+                    if(el55minus) el55minus.className = "via diagonal v-abajo " + col55;
+                }
+            }
+            return; // Candado definitivo para el 56a55
+        }
+// >> 11. VICTORIA: CONTROL EXCLUSIVO CAMBIO SIMPLE W151 (BLINDADO)
+        else if(idW === "151") {
+            var el151plus  = document.getElementById('w151plus');
+            var el151minus = document.getElementById('w151minus');
+            var el151pm    = document.getElementById('w151pm');
+
+            var lP = document.getElementById('LW151P'), lM = document.getElementById('LW151M'), lA = document.getElementById('AW151');
+
+            var pos151 = c.cur;
+            var avg151 = c.avg;
+            var ocu151 = c.ocu; // Ocupación unificada para el cambio simple
+
+            var esAveria = (avg151 === 1 || avg151 === "1" || avg151 === true);
+            var col151 = ocu151 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos151 === "1" || pos151 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos151 === "1" || pos151 === 1) {
+                if(el151minus) el151minus.className = "via diagonal via-fantasma";
+                if (esAveria && tic) {
+                    if(el151pm) el151pm.className = "via via-fantasma";
+                    if(el151plus) el151plus.className = "via via-fantasma";
+                } else {
+                    if(el151pm) el151pm.className = "via " + col151;
+                    if(el151plus) el151plus.className = "via " + col151;
+                }
+            } else {
+                if(el151plus) el151plus.className = "via via-fantasma";
+                if (esAveria && tic) {
+                    if(el151pm) el151pm.className = "via via-fantasma";
+                    if(el151minus) el151minus.className = "via diagonal via-fantasma";
+                } else {
+                    if(el151pm) el151pm.className = "via " + col151;
+                    if(el151minus) el151minus.className = "via diagonal " + col151;
+                }
+            }
+            return; // Candado definitivo para el 151
+        }
+// >> 12. VICTORIA: CONTROL EXCLUSIVO CAMBIO SIMPLE W142 (BLINDADO)
+        else if(idW === "142") {
+            var el142plus  = document.getElementById('w142plus');
+            var el142minus = document.getElementById('w142minus');
+            var el142pm    = document.getElementById('w142pm');
+
+            var lP = document.getElementById('LW142P'), lM = document.getElementById('LW142M'), lA = document.getElementById('AW142');
+
+            var pos142 = c.cur;
+            var avg142 = c.avg;
+            var ocu142 = c.ocu; 
+
+            var esAveria = (avg142 === 1 || avg142 === "1" || avg142 === true);
+            var col142 = ocu142 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos142 === "1" || pos142 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos142 === "1" || pos142 === 1) {
+                if(el142minus) el142minus.className = "via diagonal via-fantasma";
+                if (esAveria && tic) {
+                    if(el142pm) el142pm.className = "via via-fantasma";
+                    if(el142plus) el142plus.className = "via via-fantasma";
+                } else {
+                    if(el142pm) el142pm.className = "via " + col142;
+                    if(el142plus) el142plus.className = "via " + col142;
+                }
+            } else {
+                if(el142plus) el142plus.className = "via via-fantasma";
+                if (esAveria && tic) {
+                    if(el142pm) el142pm.className = "via via-fantasma";
+                    if(el142minus) el142minus.className = "via diagonal via-fantasma";
+                } else {
+                    if(el142pm) el142pm.className = "via " + col142;
+                    if(el142minus) el142minus.className = "via diagonal " + col142;
+                }
+            }
+            return; // Candado definitivo para el 142
+        }
+// >> 13. VICTORIA: CONTROL EXCLUSIVO CAMBIO SIMPLE W53 (BLINDADO)
+        else if(idW === "53") {
+            var el53plus  = document.getElementById('w53plus');
+            var el53minus = document.getElementById('w53minus');
+            var el53pm    = document.getElementById('w53pm');
+
+            var lP = document.getElementById('LW53P'), lM = document.getElementById('LW53M'), lA = document.getElementById('AW53');
+
+            var pos53 = c.cur;
+            var avg53 = c.avg;
+            var ocu53 = c.ocu; 
+
+            var esAveria = (avg53 === 1 || avg53 === "1" || avg53 === true);
+            var col53 = ocu53 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos53 === "1" || pos53 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos53 === "1" || pos53 === 1) {
+                if(el53minus) el53minus.className = "via diagonal via-fantasma";
+                if (esAveria && tic) {
+                    if(el53pm) el53pm.className = "via via-fantasma";
+                    if(el53plus) el53plus.className = "via via-fantasma";
+                } else {
+                    if(el53pm) el53pm.className = "via " + col53;
+                    if(el53plus) el53plus.className = "via " + col53;
+                }
+            } else {
+                if(el53plus) el53plus.className = "via via-fantasma";
+                if (esAveria && tic) {
+                    if(el53pm) el53pm.className = "via via-fantasma";
+                    if(el53minus) el53minus.className = "via diagonal via-fantasma";
+                } else {
+                    if(el53pm) el53pm.className = "via " + col53;
+                    if(el53minus) el53minus.className = "via diagonal " + col53;
+                }
+            }
+            return; // Candado definitivo para el 53
+        }
+// >> 14. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W147 / W140 (BLINDADO)
+        else if(idW === "147140") {
+            var el147plus  = document.getElementById('w147plus');
+            var el147minus = document.getElementById('w147minus');
+            var el147pm    = document.getElementById('w147pm');
+            var el140plus  = document.getElementById('w140plus');
+            var el140minus = document.getElementById('w140minus');
+            var el140pm    = document.getElementById('w140pm');
+
+            var lP = document.getElementById('LW147140P'), lM = document.getElementById('LW147140M'), lA = document.getElementById('AW147140');
+
+            var pos147 = c.cur;
+            var avg147 = c.avg;
+            var ocu147 = c.ocu;
+            var ocu140 = c.ocuAbajo;
+
+            var esAveria = (avg147 === 1 || avg147 === "1" || avg147 === true);
+            var col147 = ocu147 ? 'ocupado' : 'libre';
+            var col140 = ocu140 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos147 === "1" || pos147 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos147 === "1" || pos147 === 1) {
+                if(el147minus) el147minus.className = "via diagonal via-fantasma v-arriba";
+                if(el140minus) el140minus.className = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el147pm) el147pm.className = "via v-arriba via-fantasma";
+                    if(el147plus) el147plus.className = "via v-arriba via-fantasma";
+                    if(el140pm) el140pm.className = "via v-abajo via-fantasma";
+                    if(el140plus) el140plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el147pm) el147pm.className = "via v-arriba " + col147;
+                    if(el147plus) el147plus.className = "via v-arriba " + col147;
+                    if(el140pm) el140pm.className = "via v-abajo " + col140;
+                    if(el140plus) el140plus.className = "via v-abajo " + col140;
+                }
+            } else {
+                if(el147plus) el147plus.className = "via v-arriba via-fantasma";
+                if(el140plus) el140plus.className = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el147pm) el147pm.className = "via v-arriba via-fantasma";
+                    if(el147minus) el147minus.className = "via diagonal v-arriba via-fantasma";
+                    if(el140pm) el140pm.className = "via v-abajo via-fantasma";
+                    if(el140minus) el140minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el147pm) el147pm.className = "via v-arriba " + col147;
+                    if(el147minus) el147minus.className = "via diagonal v-arriba " + col147;
+                    if(el140pm) el140pm.className = "via v-abajo " + col140;
+                    if(el140minus) el140minus.className = "via diagonal v-abajo " + col140;
+                }
+            }
+            return; // Candado definitivo para el 147140
+        }
+// >> 15. VICTORIA: CONTROL EXCLUSIVO CAMBIO SIMPLE W145 (BLINDADO)
+        else if(idW === "145") {
+            var el145plus  = document.getElementById('w145plus');
+            var el145minus = document.getElementById('w145minus');
+            var el145pm    = document.getElementById('w145pm');
+
+            var lP = document.getElementById('LW145P'), lM = document.getElementById('LW145M'), lA = document.getElementById('AW145');
+
+            var pos145 = c.cur;
+            var avg145 = c.avg;
+            var ocu145 = c.ocu; 
+
+            var esAveria = (avg145 === 1 || avg145 === "1" || avg145 === true);
+            var col145 = ocu145 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos145 === "1" || pos145 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos145 === "1" || pos145 === 1) {
+                if(el145minus) el145minus.className = "via diagonal via-fantasma";
+                if (esAveria && tic) {
+                    if(el145pm) el145pm.className = "via via-fantasma";
+                    if(el145plus) el145plus.className = "via via-fantasma";
+                } else {
+                    if(el145pm) el145pm.className = "via " + col145;
+                    if(el145plus) el145plus.className = "via " + col145;
+                }
+            } else {
+                if(el145plus) el145plus.className = "via via-fantasma";
+                if (esAveria && tic) {
+                    if(el145pm) el145pm.className = "via via-fantasma";
+                    if(el145minus) el145minus.className = "via diagonal via-fantasma";
+                } else {
+                    if(el145pm) el145pm.className = "via " + col145;
+                    if(el145minus) el145minus.className = "via diagonal " + col145;
+                }
+            }
+            return; // Candado definitivo para el 145
+        }
+
+      // >> 16. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W47 / W143 (BLINDADO)
+        else if(idW === "47143") {
+            var el47plus   = document.getElementById('w47plus');
+            var el47minus  = document.getElementById('w47minus');
+            var el47pm     = document.getElementById('w47pm');
+            var el143plus  = document.getElementById('w143plus');
+            var el143minus = document.getElementById('w143minus');
+            var el143pm    = document.getElementById('w143pm');
+
+            var lP = document.getElementById('LW47143P'), lM = document.getElementById('LW47143M'), lA = document.getElementById('AW47143');
+
+            var pos47 = c.cur;
+            var avg47 = c.avg;
+            var ocu47 = c.ocu;
+            var ocu143 = c.ocuAbajo;
+
+            var esAveria = (avg47 === 1 || avg47 === "1" || avg47 === true);
+            var col47 = ocu47 ? 'ocupado' : 'libre';
+            var col143 = ocu143 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos47 === "1" || pos47 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos47 === "1" || pos47 === 1) {
+                if(el47minus) el47minus.className = "via diagonal via-fantasma v-arriba";
+                if(el143minus) el143minus.className = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el47pm) el47pm.className = "via v-arriba via-fantasma";
+                    if(el47plus) el47plus.className = "via v-arriba via-fantasma";
+                    if(el143pm) el143pm.className = "via v-abajo via-fantasma";
+                    if(el143plus) el143plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el47pm) el47pm.className = "via v-arriba " + col47;
+                    if(el47plus) el47plus.className = "via v-arriba " + col47;
+                    if(el143pm) el143pm.className = "via v-abajo " + col143;
+                    if(el143plus) el143plus.className = "via v-abajo " + col143;
+                }
+            } else {
+                if(el47plus) el47plus.className = "via v-arriba via-fantasma";
+                if(el143plus) el143plus.className = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el47pm) el47pm.className = "via v-arriba via-fantasma";
+                    if(el47minus) el47minus.className = "via diagonal v-arriba via-fantasma";
+                    if(el143pm) el143pm.className = "via v-abajo via-fantasma";
+                    if(el143minus) el143minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el47pm) el47pm.className = "via v-arriba " + col47;
+                    if(el47minus) el47minus.className = "via diagonal v-arriba " + col47;
+                    if(el143pm) el143pm.className = "via v-abajo " + col143;
+                    if(el143minus) el143minus.className = "via diagonal v-abajo " + col143;
+                }
+            }
+            return; // Candado definitivo para el 47143
+        }
+              // >> 17. VICTORIA: CONTROL EXCLUSIVO ESCAPE ACOPLADO W44 / W49x (ID REAL CORREGIDO)
+        else if(idW === "4449x") {
+            var el44plus  = document.getElementById('w44plus');
+            var el44minus = document.getElementById('w44minus');
+            var el44pm    = document.getElementById('w44pm');
+            
+            // Apuntamos exacto a tus elementos con 'x'
+            var el49plus  = document.getElementById('w49xplus'); 
+            var el49minus = document.getElementById('w49xminus');
+            var el49pm    = document.getElementById('w49xpm');
+
+            var lP = document.getElementById('LW4449xP'), lM = document.getElementById('LW4449xM'), lA = document.getElementById('AW4449x');
+
+            var pos44 = c.cur;
+            var avg44 = c.avg;
+            var ocu44 = c.ocu;
+            var ocu49 = c.ocuAbajo; 
+
+            var esAveria = (avg44 === 1 || avg44 === "1" || avg44 === true);
+            var col44 = ocu44 ? 'ocupado' : 'libre';
+            var col49 = ocu49 ? 'ocupado' : 'libre';
+
+            if(lP && lM) lP.className = lM.className = "led-rd";
+            if(lA) lA.className = esAveria ? "led-rd l-red" : "led-rd";
+
+            if (pos44 === "1" || pos44 === 1) { if(lP) lP.classList.add('l-white'); }
+            else { if(lM) lM.classList.add('l-white'); }
+
+            if (pos44 === "1" || pos44 === 1) {
+                if(el44minus) el44minus.className = "via diagonal via-fantasma v-arriba";
+                if(el49minus) el49minus.className = "via diagonal via-fantasma v-abajo";
+                if (esAveria && tic) {
+                    if(el44pm) el44pm.className = "via v-arriba via-fantasma";
+                    if(el44plus) el44plus.className = "via v-arriba via-fantasma";
+                    if(el49pm) el49pm.className = "via v-abajo via-fantasma";
+                    if(el49plus) el49plus.className = "via v-abajo via-fantasma";
+                } else {
+                    if(el44pm) el44pm.className = "via v-arriba " + col44;
+                    if(el44plus) el44plus.className = "via v-arriba " + col44;
+                    if(el49pm) el49pm.className = "via v-abajo " + col49;
+                    if(el49plus) el49plus.className = "via v-abajo " + col49;
+                }
+            } else {
+                if(el44plus) el44plus.className = "via v-arriba via-fantasma";
+                if(el49plus) el49plus.className = "via v-abajo via-fantasma";
+                if (esAveria && tic) {
+                    if(el44pm) el44pm.className = "via v-arriba via-fantasma";
+                    if(el44minus) el44minus.className = "via diagonal v-arriba via-fantasma";
+                    if(el49pm) el49pm.className = "via v-abajo via-fantasma";
+                    if(el49minus) el49minus.className = "via diagonal v-abajo via-fantasma";
+                } else {
+                    if(el44pm) el44pm.className = "via v-arriba " + col44;
+                    if(el44minus) el44minus.className = "via diagonal v-arriba " + col44;
+                    if(el49pm) el49pm.className = "via v-abajo " + col49;
+                    if(el49minus) el49minus.className = "via diagonal v-abajo " + col49;
+                }
+            }
+            return;
+        }
+
+
+        // >> SAN FERNANDO: ESCAPE IZQUIERDO W60 / W61 (REPARACIÓN DE VARIABLE ARRIBA)
+        else if(idW === "6061") { 
+            wArribaP  = document.getElementById('w61plus');
+            wArribaM  = document.getElementById('w61minus');
+            wArribaPm = document.getElementById('w61pm');
+            
+            wAbajoP   = document.getElementById('w60plus'); 
+            wAbajoM   = document.getElementById('w60minus'); 
+            wAbajoPm  = document.getElementById('w60pm'); 
+            
+            // ASIGNACIÓN CRÍTICA: Le pasamos ambas ocupaciones al motor genérico
+            ocuArriba = (cambiosNuz["6061"] ? cambiosNuz["6061"].ocu : false); // <-- ¡ESTA FALTABA!
+            ocuAbajo  = (cambiosNuz["6061"] ? cambiosNuz["6061"].ocuAbajo : false); 
+        }
+        
+       // >> SAN FERNANDO: ESCAPE DERECHO W62 / W65 (REPARACIÓN DE VARIABLE ARRIBA)
+        else if(idW === "6265") { 
+            wArribaP  = document.getElementById('w65plus');
+            wArribaM  = document.getElementById('w65minus');
+            wArribaPm = document.getElementById('w65pm');
+            
+            wAbajoP   = document.getElementById('w62plus'); 
+            wAbajoM   = document.getElementById('w62minus'); 
+            wAbajoPm  = document.getElementById('w62pm'); 
+            
+            // ASIGNACIÓN CRÍTICA: Ambas ocupaciones listas
+            ocuArriba = (cambiosNuz["6265"] ? cambiosNuz["6265"].ocu : false); // <-- ¡ESTA TAMBIÉN FALTABA!
+            ocuAbajo  = (cambiosNuz["6265"] ? cambiosNuz["6265"].ocuAbajo : false); 
+        }
+        // Cabina Tigre (7071 y 7473)
+        else if(idW === "7071") { wAbajoP = document.getElementById('w70plus'); wAbajoM = document.getElementById('w70minus'); wAbajoPm = document.getElementById('w70pm'); ocuAbajo = false; } 
+        else if(idW === "7473") { wAbajoP = document.getElementById('w74plus'); wAbajoM = document.getElementById('w74minus'); wAbajoPm = document.getElementById('w74pm'); ocuAbajo = false; }
+        
+        // --- 3. FILTRO PARA DESVÍOS INDEPENDIENTES / EXCLUSIVOS TERMINALES (W72, W75, W152, etc.) ---
+        else {
+            wAbajoP = null; wAbajoM = null; wAbajoPm = null; ocuAbajo = false;
+        }
+        
+        // --- 4. CONTROL DE LEDS TESTIGO ---
+        if(lP && lM) lP.className = lM.className = "led-rd";
+        if(lA) lA.className = (c.avg === 1 || c.avg === "1") ? "led-rd l-red" : "led-rd";
+
+        if (c.cur === "1" || c.cur === 1) { if(lP) lP.classList.add('l-white'); } 
+        else { if(lM) lM.classList.add('l-white'); }
+
+        // Parche específico de orientación para los desvíos terminales sueltos de Tigre
+        if (idW === "72" || idW === "75") {
+            if (idW === "72" && wArribaP && wArribaPm && wArribaM) {
+                wArribaP.className = "via v-abajo"; wArribaPm.className = "via v-abajo"; wArribaM.className = "via diagonal v-abajo";
+                var claseEst72 = c.ocu ? 'ocupado' : 'libre'; 
+                if (c.cur === "1" || c.cur === 1) {
+                    wArribaPm.classList.add(claseEst72); wArribaP.classList.add(claseEst72); wArribaM.classList.add('via-fantasma');
+                } else {
+                    wArribaPm.classList.add(claseEst72); wArribaM.classList.add(claseEst72); wArribaP.classList.add('via-fantasma');
+                }
+            }
+            if (idW === "75") {
+                var colorEst75 = c.ocu ? 'ocupado' : 'libre'; 
+                var esAv75 = (c.avg === 1 || c.avg === "1");
+                var v75pm = document.getElementById('w75pm'), v75mm = document.getElementById('w75mm') || document.getElementById('W75MM');
+                var v75plus = document.getElementById('w75plus') || document.getElementById('W75PLUS'), v75minus = document.getElementById('w75minus') || document.getElementById('W75MINUS');
+
+                if (esAv75 && tic) {
+                    if (v75pm) v75pm.className = "via v-arriba via-fantasma"; if (v75mm) v75mm.className = "via diagonal v-arriba via-fantasma";
+                } else {
+                    if (v75pm) { v75pm.className = "via v-arriba"; v75pm.classList.add(colorEst75); }
+                    if (v75mm) { v75mm.className = "via diagonal v-arriba"; v75mm.classList.add(colorEst75); }
+                }
+
+                if (c.cur === "1" || c.cur === 1) {
+                    if (v75plus) { v75plus.className = "via v-arriba"; if (!(esAv75 && tic)) v75plus.classList.add(colorEst75); else v75plus.classList.add('via-fantasma'); }
+                    if (v75minus) v75minus.className = "via diagonal v-arriba via-fantasma";
+                } else {
+                    if (v75minus) { v75minus.className = "via diagonal v-arriba"; if (!(esAv75 && tic)) v75minus.classList.add(colorEst75); else v75minus.classList.add('via-fantasma'); }
+                    if (v75plus) v75plus.className = "via v-arriba via-fantasma";
+                }
+            }
+            return; // Bloquea ejecución aquí para los desvíos directos a paragolpes
+        }
+
+        if(!wArribaP || !wArribaM || !wArribaPm) return;
+
+        // --- 5. ASIGNACIÓN CSS BASE SEGÚN ORIENTACIÓN HISTÓRICA ---
+        wArribaP.className = "via v-arriba"; wArribaM.className = "via diagonal v-arriba"; wArribaPm.className = "via v-arriba";
+        if(wAbajoP && wAbajoM && wAbajoPm) { wAbajoP.className = "via v-abajo"; wAbajoM.className = "via diagonal v-abajo"; wAbajoPm.className = "via v-abajo"; }
+
+        var esAveria = (c.avg === 1 || c.avg === "1");
+
+        // --- 6. RENDERIZADO GENERAL (ESTADO LIBRE / OCUPADO / DESTELLO AVERÍA) ---
+        if (c.cur === "1" || c.cur === 1) {
+            wArribaM.classList.add('via-fantasma'); 
+            if(wAbajoM) wAbajoM.classList.add('via-fantasma');
+
+            if (!c.ocu) {
+                if (esAveria && tic) { wArribaPm.classList.add('via-fantasma'); wArribaP.classList.add('via-fantasma'); } 
+                else { wArribaPm.classList.add('libre'); wArribaP.classList.add('libre'); }
+            } else {
+                if (esAveria && tic) { wArribaPm.classList.add('via-fantasma'); wArribaP.classList.add('via-fantasma'); }
+                else { wArribaPm.classList.add('ocupado'); wArribaP.classList.add('ocupado'); } // Forzar ocupación explícita
+            }
+
+            if (wAbajoP && wAbajoPm) {
+                if (!ocuAbajo) {
+                    if (esAveria && tic) { wAbajoPm.classList.add('via-fantasma'); wAbajoP.classList.add('via-fantasma'); } 
+                    else { wAbajoPm.classList.add('libre'); wAbajoP.classList.add('libre'); }
+                } else {
+                    if (esAveria && tic) { wAbajoPm.classList.add('via-fantasma'); wAbajoP.classList.add('via-fantasma'); }
+                    else { wAbajoPm.classList.add('ocupado'); wAbajoP.classList.add('ocupado'); }
+                }
+            }
+
+        } else {
+            wArribaP.classList.add('via-fantasma'); 
+            if(wAbajoP) wAbajoP.classList.add('via-fantasma');
+
+            if (!c.ocu) {
+                if (esAveria && tic) { wArribaPm.classList.add('via-fantasma'); wArribaM.classList.add('via-fantasma'); } 
+                else { wArribaPm.classList.add('libre'); wArribaM.classList.add('libre'); }
+            } else {
+                if (esAveria && tic) { wArribaPm.classList.add('via-fantasma'); wArribaM.classList.add('via-fantasma'); }
+                else { wArribaPm.classList.add('ocupado'); wArribaM.classList.add('ocupado'); }
+            }
+
+            if (wAbajoM && wAbajoPm) {
+                if (!ocuAbajo) {
+                    if (esAveria && tic) { wAbajoPm.classList.add('via-fantasma'); wAbajoM.classList.add('via-fantasma'); } 
+                    else { wAbajoPm.classList.add('libre'); wAbajoM.classList.add('libre'); }
+                } else {
+                    if (esAveria && tic) { wAbajoPm.classList.add('via-fantasma'); wAbajoM.classList.add('via-fantasma'); }
+                    else { wAbajoPm.classList.add('ocupado'); wAbajoM.classList.add('ocupado'); }
+                }
+            }
+        }
+    }
+    
+    // --- FUNCIÓN ENCLAVAMIENTO SANEADA (EVITA QUE LAS CABINAS SE PISEN ENTRE SÍ) ---
+    function procesarEnclavamientosCambios(datosEnclav) {
+        if (!datosEnclav) return;
+        
+        var parejasCambios = [
+            { ids: ["EW1", "EW2"],   claves: ["EW1", "ew1", "EW2", "ew2"] },
+            { ids: ["EW11", "EW10"], claves: ["EW11", "ew11", "EW10", "ew10"] },
+            { ids: ["EW15", "EW12"], claves: ["EW15", "ew15", "EW12", "ew12"] },
+            { ids: ["EW21", "EW20"], claves: ["EW21", "ew21", "EW20", "ew20"] },
+            { ids: ["EW25", "EW24"], claves: ["EW25", "ew25", "EW24", "ew24"] },
+            { ids: ["EW31", "EW30"], claves: ["EW31", "ew31", "EW30", "ew30"] },
+            { ids: ["EW33", "EW32"], claves: ["EW33", "ew33", "EW32", "ew32"] },
+            { ids: ["EW61", "EW60"], claves: ["EW61", "ew61", "EW60", "ew60"] },
+            { ids: ["EW65", "EW62"], claves: ["EW65", "ew65", "EW62", "ew62"] },
+            { ids: ["EW71", "EW70"], claves: ["EW71", "ew71", "EW70", "ew70"] },
+            { ids: ["EW73", "EW74"], claves: ["EW73", "ew73", "EW74", "ew74"] },
+            { ids: ["EW72"],         claves: ["EW72", "ew72"] }, // Corregido el mapeo interno
+            { ids: ["EW75"],         claves: ["EW75", "ew75"] },
+            { ids: ["EW41", "EW40"], claves: ["EW41", "ew41", "EW40", "ew40"] },
+            { ids: ["EW152"],        claves: ["EW152", "ew152"] },
+            { ids: ["EW141", "EW43"],claves: ["EW141", "ew141", "EW43", "ew43"] },
+            { ids: ["EW45a", "EW45"], claves:["EW45a", "ew45a", "EW45", "ew45"] },
+            { ids: ["EW49", "EW46"],  claves:["EW49", "ew49", "EW46", "ew46"] },
+            { ids: ["EW51", "EW52"], claves: ["EW51", "ew51", "EW52", "ew52"] },
+            { ids: ["EW154", "EW54"], claves: ["EW154", "ew154", "EW54", "ew54"] },
+            { ids: ["EW150", "EW50"], claves: ["EW150", "ew150", "EW50", "ew50"] },
+            { ids: ["EW151"],         claves: ["EW151", "ew151"] },
+            { ids: ["EW142"],         claves: ["EW142", "ew142"] },
+            { ids: ["EW53"],          claves: ["EW53", "ew53"] },
+            { ids: ["EW44"],          claves: ["EW44", "ew44"] },
+            { ids: ["EW145"],         claves: ["EW145", "ew145"] },
+            { ids: ["EW147", "EW140"], claves: ["EW147", "ew147", "EW140", "ew140"] },
+            { ids: ["EW47", "EW143"], claves: ["EW47", "ew47", "EW143", "ew143"] },
+            { ids: ["EW56a", "EW55"],claves: ["EW56a", "ew56a", "EW55", "ew55"] },
+            { ids: ["EW56b", "EW156"],claves: ["EW56b", "ew56b", "EW156", "ew156"] },
+
+            ];
+
+        parejasCambios.forEach(function(pareja) {
+            var encontrado = false;
+            var estadoActivo = false;
+            
+            // Verificamos si alguna de las claves de esta pareja viene en este envío de Firebase
+            pareja.claves.forEach(function(clave) {
+                if (datosEnclav[clave] !== undefined) {
+                    encontrado = true;
+                    if (datosEnclav[clave] === 1 || datosEnclav[clave] === "1") {
+                        estadoActivo = true;
+                    }
+                }
+            });
+
+            // CRÍTICO: Solo modificamos el HTML si la cabina actual reportó datos sobre este enclavamiento
+            if (encontrado) {
+                pareja.ids.forEach(function(idHtml) {
+                    var el = document.getElementById(idHtml) || document.getElementById(idHtml.toLowerCase()) || document.getElementById(idHtml.toUpperCase());
+                    if (el) {
+                        if (estadoActivo) {
+                            el.style.backgroundColor = "#0F23DB";
+                            el.style.borderColor = "#ffffff";
+                            el.style.boxShadow = "0 0 14px #0F23DB";
+                        } else {
+                            el.style.backgroundColor = "#1a1a1a";
+                            el.style.borderColor = "#444";
+                            el.style.boxShadow = "none";
+                        }
+                    }
+                });
+            }
+        });
+
+        // Procesamiento de LEDs individuales (no compuestos)
+        Object.keys(datosEnclav).forEach(function(idId) {
+            if (!idId.toUpperCase().startsWith("EW")) {
+                var elEnc = document.getElementById(idId) || document.getElementById(idId.toUpperCase()) || document.getElementById(idId.toLowerCase());
+                if (elEnc) {
+                    if (datosEnclav[idId] === 1 || datosEnclav[idId] === "1") {
+                        elEnc.style.backgroundColor = "#0F23DB";
+                        elEnc.style.borderColor = "#ffffff";
+                        elEnc.style.boxShadow = "0 0 14px #0F23DB";
+                    } else {
+                        elEnc.style.backgroundColor = "#1a1a1a";
+                        elEnc.style.borderColor = "#444";
+                        elEnc.style.boxShadow = "none";
+                    }
+                }
+            }
+        });
+    }
+
+    // --- FUNCIÓN HELPER PARA TRAFICO REVISADA ---
+    function procesarDatosTrafico(datosTrafico, sufijoPanel) {
+        if (!datosTrafico) return;
+        
+        var mapeoLeds = {
+            "CDV1": "led-CDV1_" + sufijoPanel,
+            "CDV2": "led-CDV2_" + sufijoPanel,
+            "RF":   "led-RF_" + sufijoPanel,
+            "RU":   "led-RU_" + sufijoPanel
+        };
+        
+        Object.keys(mapeoLeds).forEach(function(claveKey) {
+            var ledEl = document.getElementById(mapeoLeds[claveKey]);
+            if (ledEl) {
+                var valor = datosTrafico[claveKey] !== undefined ? datosTrafico[claveKey] : datosTrafico[claveKey.split('').join('.')];
+                
+                if (valor === 1 || valor === "1") {
+                    ledEl.className = (claveKey === "CDV1" || claveKey === "CDV2") ? "led-10mm l-on-w" : "led-10mm l-on-b";
+                } else {
+                    ledEl.className = "led-10mm";
+                }
+            }
+        });
+    }
+
+   // ESCUCHA GENERAL DESDE LA RAÍZ 'CABINAS'
+    db.ref('cabinas').on('value', function(snapshot) {
+        var cabinas = snapshot.val();
+        if(!snapshot.exists() || !cabinas) return;
+
+        // --- FUNCIÓN HELPER PARA ACTUALIZAR SEÑALES ---
+        function procesarBloqueSenales(dataSenales) {
+            if(!dataSenales) return;
+            Object.keys(dataSenales).forEach(function(id) {
+                var idHtml = id.trim();
+                var base = document.getElementById(idHtml + '_base') || 
+                           document.getElementById(idHtml.toLowerCase() + '_base') ||
+                           document.getElementById(idHtml.toUpperCase() + '_base');
+                
+                if(!base) {
+                    var idL = idHtml.toLowerCase();
+                    if(idL === "sa-bel") base = document.getElementById("sA-BEL_base");
+                    if(idL === "sb-bel") base = document.getElementById("sB-BEL_base");
+                    if(idL === "sy-bel") base = document.getElementById("sY-BEL_base");
+                    if(idL === "sz-bel") base = document.getElementById("sZ-BEL_base");
+                    if(idL === "sa-nun") base = document.getElementById("sA-NUN_base");
+                    if(idL === "sb-nun") base = document.getElementById("sB-NUN_base");
+                    if(idL === "sy-nun") base = document.getElementById("sY-NUN_base");
+                    if(idL === "sz-nun") base = document.getElementById("sZ-NUN_base");
+                    if(idL === "sa-riv") base = document.getElementById("sA-RIV_base");
+                    if(idL === "sz-riv") base = document.getElementById("sZ-RIV_base");
+                    if(idL === "sa-lop") base = document.getElementById("sA-LOP_base");
+                    if(idL === "sz-lop") base = document.getElementById("sZ-LOP_base");
+                    if(idL === "sa-oli") base = document.getElementById("sA-OLI_base");
+                    if(idL === "sb-oli") base = document.getElementById("sB-OLI_base");
+                    if(idL === "sy-oli") base = document.getElementById("sY-OLI_base");
+                    if(idL === "sz-oli") base = document.getElementById("sZ-OLI_base");
+                    if(idL === "sa-isi") base = document.getElementById("sA-ISI_base");
+                    if(idL === "sb-isi") base = document.getElementById("sB-ISI_base");
+                    if(idL === "sw-isi") base = document.getElementById("sW-ISI_base");
+                    if(idL === "sx-isi") base = document.getElementById("sX-ISI_base");
+                    if(idL === "sa-mar") base = document.getElementById("sA-MAR_base");
+                    if(idL === "sz-mar") base = document.getElementById("sZ-MAR_base");
+                    
+                    if(idL === "sa-sf") base = document.getElementById("sA-SF_base");
+                    if(idL === "sz-sf") base = document.getElementById("sZ-SF_base");
+
+                    if(idL === "sa-tig") base = document.getElementById("sA-TIG_base");
+                    if(idL === "sz1-tig") base = document.getElementById("sZ1-TIG_base");
+                    if(idL === "sz2-tig") base = document.getElementById("sZ2-TIG_base");
+                    if(idL === "sz3-tig") base = document.getElementById("sZ3-TIG_base");
+                    if(idL === "sz4-tig") base = document.getElementById("sZ4-TIG_base");
+                }
+
+                if(base) {
+                    base.classList.remove('f-rojo', 'f-verde', 'f-maniobra');
+                    var estado = dataSenales[id];
+                    if(estado === 1 || estado === "1") base.classList.add('f-verde');
+                    else if(estado === 2 || estado === "2") base.classList.add('f-maniobra');
+                    else base.classList.add('f-rojo');
+                }
+            });
+        }
+
+        // ==========================================
+        // 1. PROCESAMIENTO BELGRANO
+        // ==========================================
+        var dataBel = cabinas.belgrano;
+        if(dataBel) {
+            if(dataBel.vias) {
+                if(dataBel.vias["w1pm"] !== undefined) w1_ocupado = (dataBel.vias["w1pm"] === 1);
+                if(dataBel.vias["w2pm"] !== undefined) w2_ocupado = (dataBel.vias["w2pm"] === 1);
+                Object.keys(dataBel.vias).forEach(function(id) {
+                    viasEstadoBel[id] = dataBel.vias[id]; 
+                    var idL = id.toLowerCase().trim();
+                    var el = document.getElementById(id) || document.getElementById(idL) || document.getElementById(id.toUpperCase()) || document.getElementById("c" + idL) || document.getElementById("cdv" + idL);
+                    if(!el) {
+                        if(idL === "a-bel") el = document.getElementById("a-Bel");
+                        if(idL === "b-bel") el = document.getElementById("b-Bel");
+                        if(idL === "y-bel") el = document.getElementById("y-Bel");
+                        if(idL === "z-bel") el = document.getElementById("z-Bel");
+                    }
+                    if(el && !["w1plus", "w1minus", "w2plus", "w2minus", "w1pm", "w2pm"].includes(el.id)) {
+                        el.classList.toggle('libre', dataBel.vias[id] === 0);
+                    }
+                });
+            }
+            if(dataBel.cambios) {
+                if(dataBel.cambios.W12 !== undefined) curW = dataBel.cambios.W12.toString();
+                if(dataBel.cambios.AW12 !== undefined) flagAveria_Bel = dataBel.cambios.AW12;
+            }
+            procesarBloqueSenales(dataBel.senales);
+            procesarDatosTrafico(dataBel.trafico || dataBel.datos_trafico, "B");
+            procesarEnclavamientosCambios(dataBel.enclavamientos);
+        }
+
+        // ==========================================
+        // 2. PROCESAMIENTO NÚÑEZ / RIVADAVIA
+        // ==========================================
+        var dataNuz = cabinas.nunez;
+        if(dataNuz) {
+            if(dataNuz.vias) {
+                if(dataNuz.vias["w11pm"] !== undefined) cambiosNuz["1011"].ocu = (dataNuz.vias["w11pm"] === 1);
+                if(dataNuz.vias["w10pm"] !== undefined) w10_ocupado = (dataNuz.vias["w10pm"] === 1);
+                if(dataNuz.vias["w15pm"] !== undefined) cambiosNuz["1215"].ocu = (dataNuz.vias["w15pm"] === 1);
+                if(dataNuz.vias["w12pm"] !== undefined) w12_ocupado = (dataNuz.vias["w12pm"] === 1);
+                if(dataNuz.vias["w123pm"] !== undefined) cambiosNuz["124123"].ocu = (dataNuz.vias["w123pm"] === 1);
+                if(dataNuz.vias["w124pm"] !== undefined) w124_ocupado = (dataNuz.vias["w124pm"] === 1);
+
+                Object.keys(dataNuz.vias).forEach(function(id) {
+                    var idL = id.toLowerCase().trim();
+                    var el = document.getElementById(id) || document.getElementById(idL) || document.getElementById(id.toUpperCase()) || document.getElementById("c" + idL) || document.getElementById("cdv" + idL);
+                    if(!el) {
+                        if(idL === "ca-nuñ") el = document.getElementById("ca-Nuñ");
+                        if(idL === "cb-nuñ") el = document.getElementById("cb-Nuñ");
+                        if(idL === "cy-nuñ") el = document.getElementById("cy-Nuñ");
+                        if(idL === "cz-nuñ") el = document.getElementById("cz-Nuñ");
+                    }
+                    if(el && !id.startsWith("w2") && !id.startsWith("w13") && !id.startsWith("w3") && !id.startsWith("w15") && !["w11plus", "w11minus", "w11pm", "w10plus", "w10minus", "w10pm", "w15plus", "w15minus", "w15pm", "w12plus", "w12minus", "w12pm", "w123plus", "w123minus", "w123pm", "w124plus", "w124minus", "w124pm"].includes(el.id)) { 
+                        el.classList.toggle('libre', dataNuz.vias[id] === 0);
+                    }
+                });
+            }
+            if(dataNuz.cambios) {
+                if(dataNuz.cambios.W1011 !== undefined) cambiosNuz["1011"].cur = dataNuz.cambios.W1011.toString();
+                if(dataNuz.cambios.W1215 !== undefined) cambiosNuz["1215"].cur = dataNuz.cambios.W1215.toString();
+                if(dataNuz.cambios.W124123 !== undefined) cambiosNuz["124123"].cur = dataNuz.cambios.W124123.toString();
+                if(dataNuz.cambios.AW1011 !== undefined) cambiosNuz["1011"].avg = dataNuz.cambios.AW1011;
+                if(dataNuz.cambios.AW1215 !== undefined) cambiosNuz["1215"].avg = dataNuz.cambios.AW1215;
+                if(dataNuz.cambios.AW124123 !== undefined) cambiosNuz["124123"].avg = dataNuz.cambios.AW124123;
+            }
+            if(dataNuz.panes) {
+                Object.keys(dataNuz.panes).forEach(function(idPan) {
+                    if(panesNuz[idPan] && dataNuz.panes[idPan] !== undefined) {
+                        var panData = dataNuz.panes[idPan];
+                        if (panData.ESTADO !== undefined) panesNuz[idPan].pos = parseInt(panData.ESTADO, 10);
+                        if (panData.AV !== undefined) panesNuz[idPan].av = parseInt(panData.AV, 10);
+                    }
+                });
+            }
+            procesarBloqueSenales(dataNuz.senales);
+            procesarEnclavamientosCambios(dataNuz.enclavamientos);
+        }
+
+        // ==========================================
+        // PROCESAMIENTO DE TRÁFICOS ESPECÍFICOS DESDE LA RAÍZ
+        // ==========================================
+        if(cabinas.trafico_nunez) procesarDatosTrafico(cabinas.trafico_nunez, "N");
+        else if(dataNuz && dataNuz.trafico) procesarDatosTrafico(dataNuz.trafico, "N");
+
+        if(cabinas.trafico_rivadavia) procesarDatosTrafico(cabinas.trafico_rivadavia, "R");
+        else if(cabinas.rivadavia) procesarDatosTrafico(cabinas.rivadavia, "R");
+
+        if(cabinas.trafico_vlopez) procesarDatosTrafico(cabinas.trafico_vlopez, "VL");
+        else if(cabinas["vicente lopez"]) procesarDatosTrafico(cabinas["vicente lopez"], "VL");
+
+        if(cabinas.trafico_lucila) procesarDatosTrafico(cabinas.trafico_lucila, "LL");
+        else if(cabinas["la lucila"]) procesarDatosTrafico(cabinas["la lucila"], "LL");
+
+        if(cabinas.trafico_martinez) procesarDatosTrafico(cabinas.trafico_martinez, "MA");
+        else if(cabinas.martinez) procesarDatosTrafico(cabinas.martinez, "MA");
+
+        if(cabinas.trafico_acassuso) procesarDatosTrafico(cabinas.trafico_acassuso, "AC");
+        else if(cabinas.acassuso) procesarDatosTrafico(cabinas.acassuso, "AC");
+
+        if(cabinas.trafico_sisidro) procesarDatosTrafico(cabinas.trafico_sisidro, "SI");
+        if(cabinas.trafico_virreyes) procesarDatosTrafico(cabinas.trafico_virreyes, "V");
+        if(cabinas.sanfernando && cabinas.sanfernando.trafico) procesarDatosTrafico(cabinas.sanfernando.trafico, "SF");
+        if(cabinas.trafico_carupa) procesarDatosTrafico(cabinas.trafico_carupa, "C");
+        if(cabinas.trafico_beccar) procesarDatosTrafico(cabinas.trafico_beccar, "BC");
+
+        // ==========================================
+        // 3. PROCESAMIENTO CABINA OLIVOS
+        // ==========================================
+        var dataOli = cabinas.olivos;
+        if(dataOli) {
+            if(dataOli.vias) {
+                if(dataOli.vias["w21pm"] !== undefined) cambiosNuz["2021"].ocu = (dataOli.vias["w21pm"] === 1);
+                if(dataOli.vias["w20pm"] !== undefined) w20_ocupado = (dataOli.vias["w20pm"] === 1);
+                if(dataOli.vias["w25pm"] !== undefined) cambiosNuz["2425"].ocu = (dataOli.vias["w25pm"] === 1);
+                if(dataOli.vias["w24pm"] !== undefined) w24_ocupado = (dataOli.vias["w24pm"] === 1);
+                if(dataOli.vias["w131pm"] !== undefined) cambiosNuz["132131"].ocu = (dataOli.vias["w131pm"] === 1);
+                if(dataOli.vias["w132pm"] !== undefined) w132_ocupado = (dataOli.vias["w132pm"] === 1);
+
+                Object.keys(dataOli.vias).forEach(function(id) {
+                    var idL = id.toLowerCase().trim();
+                    var el = document.getElementById(id === "cy-oli" ? "cy-Oli" : id) || document.getElementById(idL) || document.getElementById(id.toUpperCase()) || document.getElementById("c" + idL) || document.getElementById("cdv" + idL);
+                    if(!el) {
+                        if(idL === "ca-oli") el = document.getElementById("ca-oli");
+                        if(idL === "cb-oli") el = document.getElementById("cb-oli");
+                        if(idL === "cy-oli") el = document.getElementById("cy-Oli");
+                        if(idL === "cz-oli") el = document.getElementById("cz-oli");
+                    }
+                    if(el && !["w21plus", "w21minus", "w21pm", "w20plus", "w20minus", "w20pm", "w25plus", "w25minus", "w25pm", "w24plus", "w24minus", "w24pm", "w131plus", "w131minus", "w131pm", "w132plus", "w132minus", "w132pm"].includes(el.id)) { 
+                        el.classList.toggle('libre', dataOli.vias[id] === 0);
+                    }
+                });
+            }
+            if(dataOli.cambios) {
+                if(dataOli.cambios.W2021 !== undefined) cambiosNuz["2021"].cur = dataOli.cambios.W2021.toString();
+                if(dataOli.cambios.W2425 !== undefined) cambiosNuz["2425"].cur = dataOli.cambios.W2425.toString();
+                if(dataOli.cambios.W132131 !== undefined) cambiosNuz["132131"].cur = dataOli.cambios.W132131.toString();
+                if(dataOli.cambios.AW2021 !== undefined) cambiosNuz["2021"].avg = dataOli.cambios.AW2021;
+                if(dataOli.cambios.AW2425 !== undefined) cambiosNuz["2425"].avg = dataOli.cambios.AW2425;
+                if(dataOli.cambios.AW132131 !== undefined) cambiosNuz["132131"].avg = dataOli.cambios.AW132131;
+            }
+            if(dataOli.panes) {
+                Object.keys(dataOli.panes).forEach(function(idPan) {
+                    if(panesNuz[idPan] && dataOli.panes[idPan] !== undefined) {
+                        var panData = dataOli.panes[idPan];
+                        if (panData.ESTADO !== undefined) panesNuz[idPan].pos = parseInt(panData.ESTADO, 10);
+                        if (panData.AV !== undefined) panesNuz[idPan].av = parseInt(panData.AV, 10);
+                    }
+                });
+            }
+            procesarBloqueSenales(dataOli.senales);
+            procesarDatosTrafico(dataOli.trafico, "O");
+            procesarEnclavamientosCambios(dataOli.enclavamientos);
+        }
+
+        // ==========================================
+        // 4. PROCESAMIENTO CABINA SAN ISIDRO
+        // ==========================================
+        var dataIsi = cabinas["san isidro"] || cabinas.sanIsidro || cabinas.isidro || cabinas.sanisidro; 
+        if(dataIsi) {
+            if(dataIsi.vias) {
+                if(dataIsi.vias["w31pm"] !== undefined) cambiosNuz["3031"].ocu = (dataIsi.vias["w31pm"] === 1);
+                if(dataIsi.vias["w30pm"] !== undefined) w30_ocupado = (dataIsi.vias["w30pm"] === 1);
+                if(dataIsi.vias["w33pm"] !== undefined) cambiosNuz["3233"].ocu = (dataIsi.vias["w33pm"] === 1);
+                if(dataIsi.vias["w32pm"] !== undefined) w32_ocupado = (dataIsi.vias["w32pm"] === 1);
+                if(dataIsi.vias["w151mpm"] !== undefined) cambiosNuz["152m151m"].ocu = (dataIsi.vias["w151mpm"] === 1);
+                if(dataIsi.vias["w152mpm"] !== undefined) w152m_ocupado = (dataIsi.vias["w152mpm"] === 1);
+
+                Object.keys(dataIsi.vias).forEach(function(id) {
+                    var idLimpiado = id.toUpperCase().trim(); 
+                    var el = document.getElementById(idLimpiado) || document.getElementById("CDV" + idLimpiado) || document.getElementById(id.toLowerCase());
+                    if(el && !["w31plus", "w31minus", "w33plus", "w33minus", "w151mplus", "w151mminus", "w31pm", "w33pm", "w151mpm", "w152mpm", "w30plus", "w30minus", "w30pm", "w32plus", "w32minus", "w32pm", "w152mplus", "w152mminus"].includes(el.id)) {
+                        el.classList.toggle('libre', dataIsi.vias[id] === 0);
+                    }
+                });
+            }
+            if(dataIsi.cambios) {
+                if(dataIsi.cambios.W3031 !== undefined) cambiosNuz["3031"].cur = dataIsi.cambios.W3031.toString();
+                if(dataIsi.cambios.W3233 !== undefined) cambiosNuz["3233"].cur = dataIsi.cambios.W3233.toString();
+                if(dataIsi.cambios.W152m151m !== undefined) cambiosNuz["152m151m"].cur =dataIsi.cambios.W152m151m.toString();
+                if(dataIsi.cambios.AW3031 !== undefined) cambiosNuz["3031"].avg = dataIsi.cambios.AW3031;
+                if(dataIsi.cambios.AW3233 !== undefined) cambiosNuz["3233"].avg = dataIsi.cambios.AW3233;
+                if(dataIsi.cambios.AW152m151m !== undefined) cambiosNuz["152m151m"].avg = dataIsi.cambios.AW152m151m;
+            }
+            if(dataIsi.panes) {
+                Object.keys(dataIsi.panes).forEach(function(idPan) {
+                    if(panesNuz[idPan] && dataIsi.panes[idPan] !== undefined) {
+                        var panData = dataIsi.panes[idPan];
+                        if (panData.ESTADO !== undefined) panesNuz[idPan].pos = parseInt(panData.ESTADO, 10);
+                        if (panData.AV !== undefined) panesNuz[idPan].av = parseInt(panData.AV, 10);
+                    }
+                });
+            }
+            procesarBloqueSenales(dataIsi.senales);
+            if (!cabinas.trafico_sisidro) procesarDatosTrafico(dataIsi.trafico, "SI");
+            procesarEnclavamientosCambios(dataIsi.enclavamientos);
+        }
+
+    // ==========================================
+        // 5. PROCESAMIENTO CABINA SAN FERNANDO (CORREGIDO)
+        // ==========================================
+        var dataSf = cabinas.sanfernando || cabinas["san fernando"];
+        
+        if(dataSf) {
+            if(dataSf.vias) {
+                // Guardamos ambas ocupaciones en la matriz igual que San Isidro
+                if(dataSf.vias["w61pm"] !== undefined) cambiosNuz["6061"].ocu = (dataSf.vias["w61pm"] === 1);
+                if(dataSf.vias["w60pm"] !== undefined) cambiosNuz["6061"].ocuAbajo = (dataSf.vias["w60pm"] === 1); 
+                
+                if(dataSf.vias["w65pm"] !== undefined) cambiosNuz["6265"].ocu = (dataSf.vias["w65pm"] === 1);
+                if(dataSf.vias["w62pm"] !== undefined) cambiosNuz["6265"].ocuAbajo = (dataSf.vias["w62pm"] === 1); 
+                
+                Object.keys(dataSf.vias).forEach(function(id) {
+                    var idLimpiado = id.toUpperCase().trim(); 
+                    var el = document.getElementById(idLimpiado) || document.getElementById("CDV" + idLimpiado) || document.getElementById(id.toLowerCase());
+                    
+                    if(el && !["w61plus", "w61minus", "w65plus", "w65minus", "w61pm", "w65pm","w60plus", "w60minus", "w60pm", "w62plus", "w62minus", "w62pm"].includes(el.id)) { 
+                        // Iluminación correcta para las vías comunes de San Fernando
+                        el.classList.toggle('libre', dataSf.vias[id] === 0);
+                        el.classList.toggle('ocupado', dataSf.vias[id] === 1);
+                    }
+                });
+            }
+            if(dataSf.cambios) {
+                if(dataSf.cambios.W6061 !== undefined)  cambiosNuz["6061"].cur = dataSf.cambios.W6061.toString();
+                if(dataSf.cambios.W6265 !== undefined)  cambiosNuz["6265"].cur = dataSf.cambios.W6265.toString();
+                if(dataSf.cambios.AW6061 !== undefined) cambiosNuz["6061"].avg = dataSf.cambios.AW6061;
+                if(dataSf.cambios.AW6265 !== undefined) cambiosNuz["6265"].avg = dataSf.cambios.AW6265;
+            }
+            if(dataSf.panes) {
+                Object.keys(dataSf.panes).forEach(function(idPan) {
+                    if(panesNuz[idPan] && dataSf.panes[idPan] !== undefined) {
+                        var panData = dataSf.panes[idPan];
+                        if (panData.ESTADO !== undefined) panesNuz[idPan].pos = parseInt(panData.ESTADO, 10);
+                        if (panData.AV !== undefined) panesNuz[idPan].av = parseInt(panData.AV, 10);
+                    }
+                });
+            }
+            procesarBloqueSenales(dataSf.senales);
+            if (!cabinas.trafico_sanfernando) procesarDatosTrafico(dataSf.trafico, "SF");
+            procesarEnclavamientosCambios(dataSf.enclavamientos);
+        }
+       // ==========================================
+        // 6. PROCESAMIENTO CABINA TERMINAL TIGRE (CORREGIDO)
+        // ==========================================
+        var dataTig = cabinas.tigre || cabinas["tigre"];
+        if(dataTig) {
+            if(dataTig.vias) {
+                // --- CORRECCIÓN: Guardar ocupación en la matriz de cambios de Tigre ---
+                if(dataTig.vias["w71pm"] !== undefined) cambiosNuz["7071"].ocu = (dataTig.vias["w71pm"] === 1);
+                if(dataTig.vias["w73pm"] !== undefined) cambiosNuz["7473"].ocu = (dataTig.vias["w73pm"] === 1);
+                if(dataTig.vias["w72pm"] !== undefined) cambiosNuz["72"].ocu = (dataTig.vias["w72pm"] === 1);
+                if(dataTig.vias["w75pm"] !== undefined) cambiosNuz["75"].ocu = (dataTig.vias["w75pm"] === 1);
+
+                Object.keys(dataTig.vias).forEach(function(id) {
+                    var el = document.getElementById(id) || document.getElementById(id.toLowerCase()) || document.getElementById(id.toUpperCase());
+                    if(el) {
+                        el.classList.toggle('libre', dataTig.vias[id] === 0);
+                    }
+                });
+            }
+            if(dataTig.panes) {
+                Object.keys(dataTig.panes).forEach(function(idPan) {
+                    if(panesNuz[idPan] && dataTig.panes[idPan] !== undefined) {
+                        var panData = dataTig.panes[idPan];
+                        if (panData.ESTADO !== undefined) panesNuz[idPan].pos = parseInt(panData.ESTADO, 10);
+                        if (panData.AV !== undefined) panesNuz[idPan].av = parseInt(panData.AV, 10);
+                    }
+                });
+            }
+            if(dataTig.cambios) {
+                if(dataTig.cambios.W7071 !== undefined) cambiosNuz["7071"].cur = dataTig.cambios.W7071.toString();
+                if(dataTig.cambios.W7473 !== undefined) cambiosNuz["7473"].cur = dataTig.cambios.W7473.toString();
+                if(dataTig.cambios.W72 !== undefined) cambiosNuz["72"].cur = dataTig.cambios.W72.toString();
+                if(dataTig.cambios.W75 !== undefined) cambiosNuz["75"].cur = dataTig.cambios.W75.toString();
+                if(dataTig.cambios.AW7071 !== undefined) cambiosNuz["7071"].avg = dataTig.cambios.AW7071;
+                if(dataTig.cambios.AW7473 !== undefined) cambiosNuz["7473"].avg = dataTig.cambios.AW7473;
+                if(dataTig.cambios.AW72 !== undefined) cambiosNuz["72"].avg = dataTig.cambios.AW72;
+                if(dataTig.cambios.AW75 !== undefined) cambiosNuz["75"].avg = dataTig.cambios.AW75;
+            }
+            if(dataTig.trafico) {
+                procesarDatosTrafico(dataTig.trafico, "T");
+            }
+            procesarBloqueSenales(dataTig.senales);
+            procesarEnclavamientosCambios(dataTig.enclavamientos);
+
+            // >>> ¡LA LLAMADA CLAVE QUE FALTA AGREGAR VA ACÁ! <<<
+            // Si desde Firebase o el ESP32 mandan la clave "itinerario_tigre", actualiza el cartel
+            if(dataTig.itinerario_tigre !== undefined) {
+                actualizarCartelRuta(dataTig.itinerario_tigre);
+            }
+        }
+
+// FUNCIÓN PARA ENTRADA DE DATOS DE ITINERARIO (Tal cual la pusiste vos, está perfecta acá abajo)
+function actualizarCartelRuta(datoItinerario) {
+    var cajaExterior = document.getElementById('cartel_ruta_tigre');
+    var textoInterior = document.getElementById('texto_ruta_tigre');
+
+    if (!cajaExterior || !textoInterior) return;
+
+    var ruta = String(datoItinerario).trim().toUpperCase();
+    var rutasValidas = ['1', '2', '3', '4', 'T', 'G', 'P', 'M'];
+
+    if (rutasValidas.includes(ruta)) {
+        textoInterior.innerText = ruta;
+        cajaExterior.style.display = 'flex'; 
+    } else {
+        textoInterior.innerText = '';
+        cajaExterior.style.display = 'none'; 
+    }
+}
+// ==================================================================
+        // 7. PROCESAMIENTO CABINA VICTORIA (CORREGIDO INTEGRAL CON W47/143)
+        // ==================================================================
+        var dataVic = cabinas.victoria || cabinas["victoria"] || cabinas.vic;
+
+        if (dataVic) {
+            if(dataVic.vias) {
+                // Ocupaciones W40/W41
+                if(dataVic.vias["w41pm"] !== undefined) cambiosNuz["4041"].ocu = (dataVic.vias["w41pm"] === 1);  
+                if(dataVic.vias["w40pm"] !== undefined) cambiosNuz["4041"].ocuAbajo = (dataVic.vias["w40pm"] === 1);
+                
+                // Ocupaciones W152
+                if(dataVic.vias["w152pm"] !== undefined) {
+                    cambiosNuz["152"].ocu = (dataVic.vias["w152pm"] === 1);
+                } else if(dataVic.vias["w152"] !== undefined) {
+                    cambiosNuz["152"].ocu = (dataVic.vias["w152"] === 1);
+                }
+
+                // Ocupaciones W43/141
+                if(dataVic.vias["w141pm"] !== undefined) cambiosNuz["43141"].ocu = (dataVic.vias["w141pm"] === 1);
+                if(dataVic.vias["w43pm"] !== undefined)  cambiosNuz["43141"].ocuAbajo = (dataVic.vias["w43pm"] === 1);
+
+                // Ocupaciones W45/45a
+                if(dataVic.vias["w45apm"] !== undefined) cambiosNuz["4545a"].ocu = (dataVic.vias["w45apm"] === 1);
+                if(dataVic.vias["w45pm"] !== undefined)  cambiosNuz["4545a"].ocuAbajo = (dataVic.vias["w45pm"] === 1);
+
+                // Ocupaciones W46/49
+                if(dataVic.vias["w46pm"] !== undefined) cambiosNuz["4649"].ocu = (dataVic.vias["w46pm"] === 1);
+                if(dataVic.vias["w49pm"] !== undefined) cambiosNuz["4649"].ocuAbajo = (dataVic.vias["w49pm"] === 1);
+
+                // Ocupaciones W51/52
+                if(dataVic.vias["w51pm"] !== undefined) cambiosNuz["5152"].ocu = (dataVic.vias["w51pm"] === 1);
+                if(dataVic.vias["w52pm"] !== undefined) cambiosNuz["5152"].ocuAbajo = (dataVic.vias["w52pm"] === 1);
+
+                // Ocupaciones W154/54
+                if(dataVic.vias["w54pm"] !== undefined)  cambiosNuz["15454"].ocu = (dataVic.vias["w54pm"] === 1);
+                if(dataVic.vias["w154pm"] !== undefined) cambiosNuz["15454"].ocuAbajo = (dataVic.vias["w154pm"] === 1);
+
+                // Ocupaciones W156/56b
+                if(dataVic.vias["w56bpm"] !== undefined)  cambiosNuz["15656b"].ocu = (dataVic.vias["w56bpm"] === 1);
+                if(dataVic.vias["w156pm"] !== undefined) cambiosNuz["15656b"].ocuAbajo = (dataVic.vias["w156pm"] === 1);
+
+                // Ocupaciones W50/150
+                if(dataVic.vias["w150pm"] !== undefined) cambiosNuz["50150"].ocu = (dataVic.vias["w150pm"] === 1);
+                if(dataVic.vias["w50pm"] !== undefined)  cambiosNuz["50150"].ocuAbajo = (dataVic.vias["w50pm"] === 1);
+
+                // Ocupaciones W56a/55
+                if(dataVic.vias["w56apm"] !== undefined) cambiosNuz["56a55"].ocu = (dataVic.vias["w56apm"] === 1);
+                if(dataVic.vias["w55pm"] !== undefined)  cambiosNuz["56a55"].ocuAbajo = (dataVic.vias["w55pm"] === 1);
+
+                // Ocupaciones W151
+                if(dataVic.vias["w151pm"] !== undefined) {
+                    cambiosNuz["151"].ocu = (dataVic.vias["w151pm"] === 1);
+                } else if(dataVic.vias["w151"] !== undefined) {
+                    cambiosNuz["151"].ocu = (dataVic.vias["w151"] === 1);
+                }
+
+                // Ocupaciones W142
+                if(dataVic.vias["w142pm"] !== undefined) {
+                    cambiosNuz["142"].ocu = (dataVic.vias["w142pm"] === 1);
+                } else if(dataVic.vias["w142"] !== undefined) {
+                    cambiosNuz["142"].ocu = (dataVic.vias["w142"] === 1);
+                }
+
+                // Ocupaciones W53
+                if(dataVic.vias["w53pm"] !== undefined) {
+                    cambiosNuz["53"].ocu = (dataVic.vias["w53pm"] === 1);
+                } else if(dataVic.vias["w53"] !== undefined) {
+                    cambiosNuz["53"].ocu = (dataVic.vias["w53"] === 1);
+                }
+
+                // Ocupaciones W147/140
+                if(dataVic.vias["w147pm"] !== undefined) cambiosNuz["147140"].ocu = (dataVic.vias["w147pm"] === 1);
+                if(dataVic.vias["w140pm"] !== undefined) cambiosNuz["147140"].ocuAbajo = (dataVic.vias["w140pm"] === 1);
+
+                // Ocupaciones W145
+                if(dataVic.vias["w145pm"] !== undefined)  cambiosNuz["145"].ocu = (dataVic.vias["w145pm"] === 1);
+                else if(dataVic.vias["w145"] !== undefined) cambiosNuz["145"].ocu = (dataVic.vias["w145"] === 1);
+
+                // >>> NUEVO: Ocupaciones para Escape Acoplado W47/143
+                if(dataVic.vias["w47pm"] !== undefined)  cambiosNuz["47143"].ocu = (dataVic.vias["w47pm"] === 1);
+                if(dataVic.vias["w143pm"] !== undefined) cambiosNuz["47143"].ocuAbajo = (dataVic.vias["w143pm"] === 1);
+                // >>> CONFIGURACIÓN ESTÁNDAR: Ocupaciones para Escape 4449x
+                if(dataVic.vias["w44pm"] !== undefined)  cambiosNuz["4449x"].ocu = (dataVic.vias["w44pm"] === 1);  
+                if(dataVic.vias["w49xpm"] !== undefined)  cambiosNuz["4449x"].ocuAbajo = (dataVic.vias["w49xpm"] === 1);
+
+               // Iluminación general de circuitos de vía en el mapa
+                Object.keys(dataVic.vias).forEach(function(id) {
+                    // --- EL ESCUDO PROTECTOR COMPLETAMENTE BLINDADO (CON LA X REAL) ---
+                    if (id === "w41plus" || id === "w41minus" || id === "w41pm" ||
+                        id === "w40plus" || id === "w40minus" || id === "w40pm" ||
+                        id === "w152plus" || id === "w152minus" || id === "w152pm" ||
+                        id === "w141plus" || id === "w141minus" || id === "w141pm" ||
+                        id === "w43plus" || id === "w43minus" || id === "w43pm" ||
+                        id === "w45aplus" || id === "w45aminus" || id === "w45apm" ||
+                        id === "w45plus" || id === "w45minus" || id === "w45pm" ||
+                        id === "w46plus" || id === "w46minus" || id === "w46pm" ||
+                        id === "w49plus" || id === "w49minus" || id === "w49pm" ||
+                        id === "w51plus" || id === "w51minus" || id === "w51pm" ||
+                        id === "w52plus" || id === "w52minus" || id === "w52pm" ||
+                        id === "w54plus" || id === "w54minus" || id === "w54pm" ||
+                        id === "w154plus" || id === "w154minus" || id === "w154pm" ||
+                        id === "w56bplus" || id === "w56bminus" || id === "w56bpm" ||
+                        id === "w156plus" || id === "w156minus" || id === "w156pm" ||
+                        id === "w150plus" || id === "w150minus" || id === "w150pm" ||
+                        id === "w50plus" || id === "w50minus" || id === "w50pm" ||
+                        id === "w56aplus" || id === "w56aminus" || id === "w56apm" ||
+                        id === "w55plus" || id === "w55minus" || id === "w55pm" ||
+                        id === "w151plus" || id === "w151minus" || id === "w151pm" ||
+                        id === "w142plus" || id === "w142minus" || id === "w142pm" ||
+                        id === "w53plus" || id === "w53minus" || id === "w53pm" ||
+                        id === "w147plus" || id === "w147minus" || id === "w147pm" ||
+                        id === "w140plus" || id === "w140minus" || id === "w140pm" ||
+                        id === "w145plus" || id === "w145minus" || id === "w145pm" ||
+                        id === "w47plus"  || id === "w47minus"  || id === "w47pm"  ||
+                        id === "w143plus" || id === "w143minus" || id === "w143pm" ||
+                        id === "w44plus"  || id === "w44minus"  || id === "w44pm"  ||
+                        id === "w49xplus" || id === "w49xminus" || id === "w49xpm") { // <-- CORREGIDO: IDs reales con 'x'
+                        return; // Candado: Firebase no toca estas vías
+                    }
+
+                    var el = document.getElementById(id) || document.getElementById(id.toLowerCase()) || document.getElementById(id.toUpperCase());
+                    if(el) {
+                        el.classList.toggle('libre', dataVic.vias[id] === 0);
+                        el.classList.toggle('ocupado', dataVic.vias[id] === 1);
+                    }
+                });
+
+                   
+            } 
+
+            if(dataVic.cambios) {
+                if(dataVic.cambios.W4041 !== undefined)   cambiosNuz["4041"].cur = dataVic.cambios.W4041.toString();
+
+                if(dataVic.cambios.W152 !== undefined)    cambiosNuz["152"].cur = dataVic.cambios.W152.toString();
+                
+                if(dataVic.cambios.W43141 !== undefined) cambiosNuz["43141"].cur = dataVic.cambios.W43141.toString();
+                else if(dataVic.cambios.W43 !== undefined) cambiosNuz["43141"].cur = dataVic.cambios.W43.toString();
+
+                if(dataVic.cambios.W4545a !== undefined) cambiosNuz["4545a"].cur = dataVic.cambios.W4545a.toString();
+                else if(dataVic.cambios.W45 !== undefined) cambiosNuz["4545a"].cur = dataVic.cambios.W45.toString();
+
+                if(dataVic.cambios.W4649 !== undefined) cambiosNuz["4649"].cur = dataVic.cambios.W4649.toString();
+                else if(dataVic.cambios.W46 !== undefined) cambiosNuz["4649"].cur = dataVic.cambios.W46.toString();
+
+                if(dataVic.cambios.W5152 !== undefined) cambiosNuz["5152"].cur = dataVic.cambios.W5152.toString();
+                else if(dataVic.cambios.W51 !== undefined) cambiosNuz["5152"].cur = dataVic.cambios.W51.toString();
+
+                if(dataVic.cambios.W15454 !== undefined) cambiosNuz["15454"].cur = dataVic.cambios.W15454.toString();
+                else if(dataVic.cambios.W54 !== undefined) cambiosNuz["15454"].cur = dataVic.cambios.W54.toString();
+
+                if(dataVic.cambios.W15656b !== undefined) cambiosNuz["15656b"].cur = dataVic.cambios.W15656b.toString();
+                else if(dataVic.cambios.W56B !== undefined) cambiosNuz["15656b"].cur = dataVic.cambios.W56B.toString();
+                else if(dataVic.cambios.W56b !== undefined) cambiosNuz["15656b"].cur = dataVic.cambios.W56b.toString();
+
+                if(dataVic.cambios.W50150 !== undefined) cambiosNuz["50150"].cur = dataVic.cambios.W50150.toString();
+                else if(dataVic.cambios.W50 !== undefined) cambiosNuz["50150"].cur = dataVic.cambios.W50.toString();
+
+                if(dataVic.cambios.W56a55 !== undefined) cambiosNuz["56a55"].cur = dataVic.cambios.W56a55.toString();
+                else if(dataVic.cambios.W56a !== undefined) cambiosNuz["56a55"].cur = dataVic.cambios.W56a.toString();
+
+                if(dataVic.cambios.W151 !== undefined) cambiosNuz["151"].cur = dataVic.cambios.W151.toString();
+                if(dataVic.cambios.W142 !== undefined) cambiosNuz["142"].cur = dataVic.cambios.W142.toString();
+                if(dataVic.cambios.W53 !== undefined)  cambiosNuz["53"].cur = dataVic.cambios.W53.toString();
+                if(dataVic.cambios.W147140 !== undefined) cambiosNuz["147140"].cur = dataVic.cambios.W147140.toString();
+                if(dataVic.cambios.W145 !== undefined) cambiosNuz["145"].cur = dataVic.cambios.W145.toString();
+
+                // >>> NUEVO: Posición para W47143
+                if(dataVic.cambios.W47143 !== undefined) cambiosNuz["47143"].cur = dataVic.cambios.W47143.toString();
+                else if(dataVic.cambios.W47 !== undefined) cambiosNuz["47143"].cur = dataVic.cambios.W47.toString();
+
+                if(dataVic.cambios.AW4041 !== undefined)  cambiosNuz["4041"].avg = dataVic.cambios.AW4041;
+                if(dataVic.cambios.AW152 !== undefined)   cambiosNuz["152"].avg = dataVic.cambios.AW152;
+                
+                if(dataVic.cambios.AW43141 !== undefined) cambiosNuz["43141"].avg = dataVic.cambios.AW43141;
+                else if(dataVic.cambios.AW43 !== undefined) cambiosNuz["43141"].avg = dataVic.cambios.AW43;
+
+                if(dataVic.cambios.AW4545a !== undefined) cambiosNuz["4545a"].avg = dataVic.cambios.AW4545a;
+                else if(dataVic.cambios.AW45 !== undefined) cambiosNuz["4545a"].avg = dataVic.cambios.AW45;
+
+                if(dataVic.cambios.AW4649 !== undefined) cambiosNuz["4649"].avg = dataVic.cambios.AW4649;
+                else if(dataVic.cambios.AW46 !== undefined) cambiosNuz["4649"].avg = dataVic.cambios.AW46;
+
+                if(dataVic.cambios.AW5152 !== undefined) cambiosNuz["5152"].avg = dataVic.cambios.AW5152;
+                else if(dataVic.cambios.AW51 !== undefined) cambiosNuz["5152"].avg = dataVic.cambios.AW51;
+
+                if(dataVic.cambios.AW15454 !== undefined) cambiosNuz["15454"].avg = dataVic.cambios.AW15454;
+                else if(dataVic.cambios.AW54 !== undefined) cambiosNuz["15454"].avg = dataVic.cambios.AW54;
+
+                if(dataVic.cambios.AW15656b !== undefined) cambiosNuz["15656b"].avg = dataVic.cambios.AW15656b;
+                else if(dataVic.cambios.AW56b !== undefined) cambiosNuz["15656b"].avg = dataVic.cambios.AW56b;
+
+                if(dataVic.cambios.AW50150 !== undefined) cambiosNuz["50150"].avg = dataVic.cambios.AW50150;
+                else if(dataVic.cambios.AW50 !== undefined) cambiosNuz["50150"].avg = dataVic.cambios.AW50;
+
+                if(dataVic.cambios.AW56a55 !== undefined) cambiosNuz["56a55"].avg = dataVic.cambios.AW56a55;
+                else if(dataVic.cambios.AW56a !== undefined) cambiosNuz["56a55"].avg = dataVic.cambios.AW56a;
+
+                if(dataVic.cambios.AW151 !== undefined) cambiosNuz["151"].avg = dataVic.cambios.AW151;
+
+                if(dataVic.cambios.AW142 !== undefined) cambiosNuz["142"].avg = dataVic.cambios.AW142;
+
+                if(dataVic.cambios.AW53 !== undefined) cambiosNuz["53"].avg = dataVic.cambios.AW53;
+
+                if(dataVic.cambios.AW147140 !== undefined) cambiosNuz["147140"].avg = dataVic.cambios.AW147140;
+                else if(dataVic.cambios.AW147 !== undefined) cambiosNuz["147140"].avg = dataVic.cambios.AW147;
+
+
+                if(dataVic.cambios.AW145 !== undefined) cambiosNuz["145"].avg = dataVic.cambios.AW145;
+
+                
+                if(dataVic.cambios.AW47143 !== undefined) cambiosNuz["47143"].avg = dataVic.cambios.AW47143;
+                else if(dataVic.cambios.AW47 !== undefined) cambiosNuz["47143"].avg = dataVic.cambios.AW47;
+
+               if(dataVic.cambios.AW4449x !== undefined) cambiosNuz["4449x"].avg = dataVic.cambios.AW4449x;
+               else if(dataVic.cambios.AW44 !== undefined) cambiosNuz["4449x"].avg = dataVic.cambios.AW44;
+               }
+
+               if(dataVic.panes) {
+                Object.keys(dataVic.panes).forEach(function(idPan) {
+                    if(panesNuz[idPan] && dataVic.panes[idPan] !== undefined) {
+                        var panData = dataVic.panes[idPan];
+                        if (panData.ESTADO !== undefined) panesNuz[idPan].pos = parseInt(panData.ESTADO, 10);
+                        if (panData.AV !== undefined) panesNuz[idPan].av = parseInt(panData.AV, 10);
+                    }
+                });
+            }
+
+            if(dataVic.trafico) {
+                procesarDatosTrafico(dataVic.trafico, "VI");
+            }
+            
+            procesarBloqueSenales(dataVic.senales);
+            procesarEnclavamientosCambios(dataVic.enclavamientos);
+
+            // >>> 1. ¡LA LLAMADA VA ACÁ JUSTO ANTES DE CERRAR LA CABINA!
+            sincronizarViasEspejo(dataVic);
+        }
+    }); // Fin de la escucha Firebase  
+
+// >>> 2. LA FUNCIÓN VA ACÁ AFUERA (ENTRE LA ESCUCHA Y EL ONLOAD)
+function sincronizarViasEspejo(dataVic) {
+    if (!dataVic || !dataVic.vias) return;
+
+    // Buscamos el estado real del circuito usando la clave que manda Firebase ("cv-vic")
+    var estadoVia = dataVic.vias["cv-vic"];
+
+    if (estadoVia !== undefined) {
+        var elRecta = document.getElementById('cv-vic');
+        var elDiagonal = document.getElementById('cvv-vic');
+        var esLibre = (estadoVia === 0);
+
+        if (elRecta) {
+            elRecta.classList.toggle('libre', esLibre);
+            elRecta.classList.toggle('ocupado', !esLibre);
+        }
+        if (elDiagonal) {
+            elDiagonal.classList.toggle('libre', esLibre);
+            elDiagonal.classList.toggle('ocupado', !esLibre);
+        }
+    }
+}
+
+window.onload = function() {
+        pW();
+        Object.keys(cambiosNuz).forEach(actualizarChangeNuz);
+        Object.keys(panesNuz).forEach(actualizarPAN);
+    };
+
+</script>
+
+</body>
+</html>
