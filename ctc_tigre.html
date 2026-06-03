@@ -228,7 +228,6 @@
     </div>
 </div>
 
-
     
 
 
@@ -1917,39 +1916,80 @@
             });
         }
 
-        // ==========================================
-        // 1. PROCESAMIENTO BELGRANO
-        // ==========================================
-        var dataBel = cabinas.belgrano;
-        if(dataBel) {
-            if(dataBel.vias) {
-                if(dataBel.vias["w1pm"] !== undefined) w1_ocupado = (dataBel.vias["w1pm"] === 1);
-                if(dataBel.vias["w2pm"] !== undefined) w2_ocupado = (dataBel.vias["w2pm"] === 1);
-                Object.keys(dataBel.vias).forEach(function(id) {
-                    viasEstadoBel[id] = dataBel.vias[id]; 
-                    var idL = id.toLowerCase().trim();
-                    var el = document.getElementById(id) || document.getElementById(idL) || document.getElementById(id.toUpperCase()) || document.getElementById("c" + idL) || document.getElementById("cdv" + idL);
-                    if(!el) {
-                        if(idL === "a-bel") el = document.getElementById("a-Bel");
-                        if(idL === "b-bel") el = document.getElementById("b-Bel");
-                        if(idL === "y-bel") el = document.getElementById("y-Bel");
-                        if(idL === "z-bel") el = document.getElementById("z-Bel");
+     // ==================================================================
+// CONFIGURACIÓN DE PINTURA ULTRA-RÁPIDA PARA SECTOR BELGRANO C
+// ==================================================================
+// >>> BUSCÁ ESTA ESCUCHA EN TU HTML <<<
+db.ref('cabinas').on('value', function(snapshot) {
+    var cabinas = snapshot.val();
+    if(!snapshot.exists() || !cabinas) return;
+
+    // ==================================================================
+    // ACÁ PEGÁS EL BLOQUE QUE ME PASASTE (REEMPLAZANDO AL VIEJO)
+    // ==================================================================
+    var dataBel = cabinas.belgrano;
+    if (dataBel) {
+        
+        // 1. Procesamiento de Vías y Circuitos (Mesa + S3)
+        if (dataBel.vias) {
+            Object.keys(dataBel.vias).forEach(function(id) {
+                var val = dataBel.vias[id];
+                var esOcupado = (val === 1 || val === "1");
+                var idL = id.toLowerCase().trim();
+                
+                var el = document.getElementById(id) || 
+                         document.getElementById(idL) || 
+                         document.getElementById(id.toUpperCase()) || 
+                         document.getElementById("c" + idL) || 
+                         document.getElementById("cdv" + idL) ||
+                         document.getElementById("CDV" + id.toUpperCase());
+                
+                if (!el) {
+                    if (idL === "a-bel" || idL === "a-belgrano") el = document.getElementById("a-Bel");
+                    if (idL === "b-bel" || idL === "b-belgrano") el = document.getElementById("b-Bel");
+                    if (idL === "y-bel" || idL === "y-belgrano") el = document.getElementById("y-Bel");
+                    if (idL === "z-bel" || idL === "z-belgrano") el = document.getElementById("z-Bel");
+                    if (idL === "cvt7") el = document.getElementById("CVT7");
+                }
+                
+                if (el) {
+                    if (esOcupado) {
+                        el.classList.remove('libre');
+                        el.classList.add('ocupado'); 
+                    } else {
+                        el.classList.remove('ocupado'); 
+                        el.classList.add('libre');   
                     }
-                    if(el && !["w1plus", "w1minus", "w2plus", "w2minus", "w1pm", "w2pm"].includes(el.id)) {
-                        el.classList.toggle('libre', dataBel.vias[id] === 0);
-                    }
-                });
-            }
-            if(dataBel.cambios) {
-                if(dataBel.cambios.W12 !== undefined) curW = dataBel.cambios.W12.toString();
-                if(dataBel.cambios.AW12 !== undefined) flagAveria_Bel = dataBel.cambios.AW12;
-            }
-            procesarBloqueSenales(dataBel.senales);
-            procesarDatosTrafico(dataBel.trafico || dataBel.datos_trafico, "B");
-            procesarEnclavamientosCambios(dataBel.enclavamientos);
+                }
+            });
+
+            if(dataBel.vias["w1pm"] !== undefined) w1_ocupado = (dataBel.vias["w1pm"] === 1 || dataBel.vias["w1pm"] === "1");
+            if(dataBel.vias["w2pm"] !== undefined) w2_ocupado = (dataBel.vias["w2pm"] === 1 || dataBel.vias["w2pm"] === "1");
         }
 
-        // ==========================================
+        // 2. Procesamiento de Señales
+        if (dataBel.senales) {
+            procesarBloqueSenales(dataBel.senales);
+        }
+
+        // 3. Cambios y Desvíos
+        if (dataBel.cambios) {
+            if (dataBel.cambios.W12 !== undefined) curW = dataBel.cambios.W12.toString();
+            if (dataBel.cambios.AW12 !== undefined) flagAveria_Bel = dataBel.cambios.AW12;
+        }
+
+        procesarDatosTrafico(dataBel.trafico || dataBel.datos_trafico, "B");
+        procesarEnclavamientosCambios(dataBel.enclavamientos);
+    }
+    // ==================================================================
+    // FIN DEL BLOQUE NUEVO
+    // ==================================================================
+
+    // Acá abajo tu código sigue normal con las otras estaciones...
+    if (cabinas.nunez) { /* ... nunez ... */ }
+    if (cabinas.olivos) { /* ... olivos ... */ }
+
+}); // Fin de la escucha general        // ==========================================
         // 2. PROCESAMIENTO NÚÑEZ / RIVADAVIA
         // ==========================================
         var dataNuz = cabinas.nunez;
@@ -2206,8 +2246,8 @@
 
             // >>> ¡LA LLAMADA CLAVE QUE FALTA AGREGAR VA ACÁ! <<<
             // Si desde Firebase o el ESP32 mandan la clave "itinerario_tigre", actualiza el cartel
-            if(dataTig.itinerario_tigre !== undefined) {
-                actualizarCartelRuta(dataTig.itinerario_tigre);
+           if(dataTig.itinerario_tigre !== undefined) {
+                actualizarCartelEspecifico('cartel_ruta_tigre', 'texto_ruta_tigre', dataTig.itinerario_tigre);
             }
         }
 
@@ -2457,30 +2497,44 @@ function actualizarCartelRuta(datoItinerario) {
                 });
             }
 
-            if(dataVic.trafico) {
+     // [Acá termina tu procesamiento existente de Victoria...]
+           if(dataVic.trafico) {
                 procesarDatosTrafico(dataVic.trafico, "VI");
             }
             
             procesarBloqueSenales(dataVic.senales);
             procesarEnclavamientosCambios(dataVic.enclavamientos);
 
-            // >>> 1. ¡LA LLAMADA VA ACÁ JUSTO ANTES DE CERRAR LA CABINA!
+            // ================================================================
+            // >>> EL LUGAR EXACTO: LOS DOS INDICADORES DE VICTORIA VAN ACÁ <<<
+            // ================================================================
+            // Lee "itinerario_v_vic" colgado de la carpeta "victoria" en tu Firebase
+            if(dataVic.itinerario_v_vic !== undefined) {
+                actualizarCartelEspecifico('cartel_ruta_v_vic', 'texto_ruta_v_vic', dataVic.itinerario_v_vic);
+            }
+
+            // Lee "itinerario_w_vic" colgado de la carpeta "victoria" en tu Firebase
+            if(dataVic.itinerario_w_vic !== undefined) {
+                actualizarCartelEspecifico('cartel_ruta_w_vic', 'texto_ruta_w_vic', dataVic.itinerario_w_vic);
+            }
+
+            // >>> ¡LA LLAMADA ORIGINAL TUYA SIGUE ACÁ IMPECABLE!
             sincronizarViasEspejo(dataVic);
         }
     }); // Fin de la escucha Firebase  
 
-// >>> 2. LA FUNCIÓN VA ACÁ AFUERA (ENTRE LA ESCUCHA Y EL ONLOAD)
+// ==================================================================
+// >>> FUNCIONES SUELTAS (AFUERA DE LA ESCUCHA DE FIREBASE)
+// ==================================================================
+
+// LA FUNCIÓN DE VIAS ESPEJO QUE YA TENÍAS
 function sincronizarViasEspejo(dataVic) {
     if (!dataVic || !dataVic.vias) return;
-
-    // Buscamos el estado real del circuito usando la clave que manda Firebase ("cv-vic")
     var estadoVia = dataVic.vias["cv-vic"];
-
     if (estadoVia !== undefined) {
         var elRecta = document.getElementById('cv-vic');
         var elDiagonal = document.getElementById('cvv-vic');
         var esLibre = (estadoVia === 0);
-
         if (elRecta) {
             elRecta.classList.toggle('libre', esLibre);
             elRecta.classList.toggle('ocupado', !esLibre);
@@ -2492,11 +2546,31 @@ function sincronizarViasEspejo(dataVic) {
     }
 }
 
+// NUEVA: FUNCIÓN UNIVERSAL PARA CUALQUIER CARTEL DEL MAPA
+// (Te sirve para Tigre, Victoria V, Victoria W o el que quieras, validando las 8 opciones)
+function actualizarCartelEspecifico(idCaja, idTexto, datoItinerario) {
+    var cajaExterior = document.getElementById(idCaja);
+    var textoInterior = document.getElementById(idTexto);
+
+    if (!cajaExterior || !textoInterior) return;
+
+    var ruta = String(datoItinerario).trim().toUpperCase();
+    var rutasValidas = ['1', '2', '3', '4', 'T', 'G', 'P', 'M'];
+
+    if (rutasValidas.includes(ruta)) {
+        textoInterior.innerText = ruta;
+        cajaExterior.style.display = 'flex'; // Prende el visor amarillo con letras negras
+    } else {
+        textoInterior.innerText = '';
+        cajaExterior.style.display = 'none'; // Se apaga por completo negro sobre negro en reposo
+    }
+}
+// TU CARGA INICIAL
 window.onload = function() {
-        pW();
-        Object.keys(cambiosNuz).forEach(actualizarChangeNuz);
-        Object.keys(panesNuz).forEach(actualizarPAN);
-    };
+    pW();
+    Object.keys(cambiosNuz).forEach(actualizarChangeNuz);
+    Object.keys(panesNuz).forEach(actualizarPAN);
+};
 
 </script>
 
