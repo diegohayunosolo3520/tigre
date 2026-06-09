@@ -1633,12 +1633,37 @@
             wAbajoPm  = document.getElementById('w62pm'); 
             
             // ASIGNACIÓN CRÍTICA: Ambas ocupaciones listas
-            ocuArriba = (cambiosNuz["6265"] ? cambiosNuz["6265"].ocu : false); // <-- ¡ESTA TAMBIÉN FALTABA!
+            ocuArriba = (cambiosNuz["6265"] ? cambiosNuz["6265"].ocu : false);            
             ocuAbajo  = (cambiosNuz["6265"] ? cambiosNuz["6265"].ocuAbajo : false); 
+
         }
-        // Cabina Tigre (7071 y 7473)
-        else if(idW === "7071") { wAbajoP = document.getElementById('w70plus'); wAbajoM = document.getElementById('w70minus'); wAbajoPm = document.getElementById('w70pm'); ocuAbajo = false; } 
-        else if(idW === "7473") { wAbajoP = document.getElementById('w74plus'); wAbajoM = document.getElementById('w74minus'); wAbajoPm = document.getElementById('w74pm'); ocuAbajo = false; }
+      // Cabina Tigre (7071)
+else if(idW === "7071") { 
+    // Usamos variables distintas para no sobreescribir
+    wArribaP = document.getElementById('w71plus'); 
+    wArribaM = document.getElementById('w71minus'); 
+    wArribaPm = document.getElementById('w71pm');
+
+    wAbajoP = document.getElementById('w70plus'); 
+    wAbajoM = document.getElementById('w70minus'); 
+    wAbajoPm = document.getElementById('w70pm');
+
+    ocuArriba = (cambiosNuz["7071"] ? cambiosNuz["7071"].ocu : false);            
+    ocuAbajo  = (cambiosNuz["7071"] ? cambiosNuz["7071"].ocuAbajo : false); 
+}
+else if(idW === "7473") { 
+    wArribaP = document.getElementById('w73plus'); 
+    wArribaM = document.getElementById('w73minus'); 
+    wArribaPm = document.getElementById('w73pm');
+
+    wAbajoP = document.getElementById('w74plus'); 
+    wAbajoM = document.getElementById('w74minus'); 
+    wAbajoPm = document.getElementById('w74pm');
+
+    ocuArriba = (cambiosNuz["7473"] ? cambiosNuz["7473"].ocu : false);            
+    ocuAbajo  = (cambiosNuz["7473"] ? cambiosNuz["7473"].ocuAbajo : false); 
+}
+
         
         // --- 3. FILTRO PARA DESVÍOS INDEPENDIENTES / EXCLUSIVOS TERMINALES (W72, W75, W152, etc.) ---
         else {
@@ -1663,28 +1688,36 @@
                     wArribaPm.classList.add(claseEst72); wArribaM.classList.add(claseEst72); wArribaP.classList.add('via-fantasma');
                 }
             }
-            if (idW === "75") {
-                var colorEst75 = c.ocu ? 'ocupado' : 'libre'; 
-                var esAv75 = (c.avg === 1 || c.avg === "1");
-                var v75pm = document.getElementById('w75pm'), v75mm = document.getElementById('w75mm') || document.getElementById('W75MM');
-                var v75plus = document.getElementById('w75plus') || document.getElementById('W75PLUS'), v75minus = document.getElementById('w75minus') || document.getElementById('W75MINUS');
 
-                if (esAv75 && tic) {
-                    if (v75pm) v75pm.className = "via v-arriba via-fantasma"; if (v75mm) v75mm.className = "via diagonal v-arriba via-fantasma";
-                } else {
-                    if (v75pm) { v75pm.className = "via v-arriba"; v75pm.classList.add(colorEst75); }
-                    if (v75mm) { v75mm.className = "via diagonal v-arriba"; v75mm.classList.add(colorEst75); }
-                }
 
-                if (c.cur === "1" || c.cur === 1) {
-                    if (v75plus) { v75plus.className = "via v-arriba"; if (!(esAv75 && tic)) v75plus.classList.add(colorEst75); else v75plus.classList.add('via-fantasma'); }
-                    if (v75minus) v75minus.className = "via diagonal v-arriba via-fantasma";
-                } else {
-                    if (v75minus) { v75minus.className = "via diagonal v-arriba"; if (!(esAv75 && tic)) v75minus.classList.add(colorEst75); else v75minus.classList.add('via-fantasma'); }
-                    if (v75plus) v75plus.className = "via v-arriba via-fantasma";
-                }
-            }
-            return; // Bloquea ejecución aquí para los desvíos directos a paragolpes
+           if (idW === "75") {
+        var colorEst75 = c.ocu ? 'ocupado' : 'libre'; 
+        var esAv75 = (c.avg === 1 || c.avg === "1");
+        var v75pm = document.getElementById('w75pm'), v75mm = document.getElementById('w75mm') || document.getElementById('W75MM');
+        var v75plus = document.getElementById('w75plus') || document.getElementById('W75PLUS'), v75minus = document.getElementById('w75minus') || document.getElementById('W75MINUS');
+
+        // 1. Avería general solo aplicada al segmento principal (w75pm)
+        if (esAv75 && tic) {
+            if (v75pm) v75pm.className = "via v-arriba via-fantasma"; 
+        } else {
+            if (v75pm) { v75pm.className = "via v-arriba"; v75pm.classList.add(colorEst75); }
+        }
+
+        // 2. Lógica de posición del cambio (Desvíos)
+        if (c.cur === "1" || c.cur === 1) {
+            if (v75plus) { v75plus.className = "via v-arriba"; if (!(esAv75 && tic)) v75plus.classList.add(colorEst75); else v75plus.classList.add('via-fantasma'); }
+            if (v75minus) v75minus.className = "via diagonal v-arriba via-fantasma";
+        } else {
+            if (v75minus) { v75minus.className = "via diagonal v-arriba"; if (!(esAv75 && tic)) v75minus.classList.add(colorEst75); else v75minus.classList.add('via-fantasma'); }
+            if (v75plus) v75plus.className = "via v-arriba via-fantasma";
+        }
+
+        // 3. ESPEJO EXACTO: w75mm copia w75minus independientemente de su estado
+        if (v75mm && v75minus) {
+            v75mm.className = v75minus.className;
+        }
+    }
+    return; // Bloquea ejecución aquí para los desvíos directos a paragolpes
         }
 
         if(!wArribaP || !wArribaM || !wArribaPm) return;
@@ -1916,84 +1949,71 @@
             });
         }
 
-     // ==================================================================
-// CONFIGURACIÓN DE PINTURA ULTRA-RÁPIDA PARA SECTOR BELGRANO C
-// ==================================================================
-// >>> BUSCÁ ESTA ESCUCHA EN TU HTML <<<
-db.ref('cabinas').on('value', function(snapshot) {
-    var cabinas = snapshot.val();
-    if(!snapshot.exists() || !cabinas) return;
+// ==========================================
+// 1. PROCESAMIENTO BELGRANO (ESTANDARIZADO)
+// ==========================================
+// --- PROCESAMIENTO BELGRANO ---
+var dataBel = cabinas.belgrano;
 
-    // ==================================================================
-    // ACÁ PEGÁS EL BLOQUE QUE ME PASASTE (REEMPLAZANDO AL VIEJO)
-    // ==================================================================
-    var dataBel = cabinas.belgrano;
-    if (dataBel) {
-        
-        // 1. Procesamiento de Vías y Circuitos (Mesa + S3)
-        if (dataBel.vias) {
-            Object.keys(dataBel.vias).forEach(function(id) {
-                var val = dataBel.vias[id];
-                var esOcupado = (val === 1 || val === "1");
-                var idL = id.toLowerCase().trim();
-                
-                var el = document.getElementById(id) || 
-                         document.getElementById(idL) || 
-                         document.getElementById(id.toUpperCase()) || 
-                         document.getElementById("c" + idL) || 
-                         document.getElementById("cdv" + idL) ||
-                         document.getElementById("CDV" + id.toUpperCase());
-                
-                if (!el) {
-                    if (idL === "a-bel" || idL === "a-belgrano") el = document.getElementById("a-Bel");
-                    if (idL === "b-bel" || idL === "b-belgrano") el = document.getElementById("b-Bel");
-                    if (idL === "y-bel" || idL === "y-belgrano") el = document.getElementById("y-Bel");
-                    if (idL === "z-bel" || idL === "z-belgrano") el = document.getElementById("z-Bel");
-                    if (idL === "cvt7") el = document.getElementById("CVT7");
-                }
-                
-                if (el) {
-                    if (esOcupado) {
-                        el.classList.remove('libre');
-                        el.classList.add('ocupado'); 
-                    } else {
-                        el.classList.remove('ocupado'); 
-                        el.classList.add('libre');   
-                    }
-                }
-            });
-
-            if(dataBel.vias["w1pm"] !== undefined) w1_ocupado = (dataBel.vias["w1pm"] === 1 || dataBel.vias["w1pm"] === "1");
-            if(dataBel.vias["w2pm"] !== undefined) w2_ocupado = (dataBel.vias["w2pm"] === 1 || dataBel.vias["w2pm"] === "1");
+if (dataBel && dataBel.status) {
+    var led = document.getElementById('indicadorBelgrano');
+    if (led) {
+        if (dataBel.status.status == 1) {
+            led.className = 'led-status led-on';
+            window.lastHeartbeatBelgrano = Date.now();
+        } else {
+            led.className = 'led-status led-off';
         }
-
-        // 2. Procesamiento de Señales
-        if (dataBel.senales) {
-            procesarBloqueSenales(dataBel.senales);
-        }
-
-        // 3. Cambios y Desvíos
-        if (dataBel.cambios) {
-            if (dataBel.cambios.W12 !== undefined) curW = dataBel.cambios.W12.toString();
-            if (dataBel.cambios.AW12 !== undefined) flagAveria_Bel = dataBel.cambios.AW12;
-        }
-
-        procesarDatosTrafico(dataBel.trafico || dataBel.datos_trafico, "B");
-        procesarEnclavamientosCambios(dataBel.enclavamientos);
     }
-    // ==================================================================
-    // FIN DEL BLOQUE NUEVO
-    // ==================================================================
 
-    // Acá abajo tu código sigue normal con las otras estaciones...
-    if (cabinas.nunez) { /* ... nunez ... */ }
-    if (cabinas.olivos) { /* ... olivos ... */ }
 
-}); // Fin de la escucha general        // ==========================================
+
+
+
+
+            if(dataBel.vias) {
+                if(dataBel.vias["w1pm"] !== undefined) w1_ocupado = (dataBel.vias["w1pm"] === 1);
+                if(dataBel.vias["w2pm"] !== undefined) w2_ocupado = (dataBel.vias["w2pm"] === 1);
+                Object.keys(dataBel.vias).forEach(function(id) {
+                    viasEstadoBel[id] = dataBel.vias[id]; 
+                    var idL = id.toLowerCase().trim();
+                    var el = document.getElementById(id) || document.getElementById(idL) || document.getElementById(id.toUpperCase()) || document.getElementById("c" + idL) || document.getElementById("cdv" + idL);
+                    if(!el) {
+                        if(idL === "a-bel") el = document.getElementById("a-Bel");
+                        if(idL === "b-bel") el = document.getElementById("b-Bel");
+                        if(idL === "y-bel") el = document.getElementById("y-Bel");
+                        if(idL === "z-bel") el = document.getElementById("z-Bel");
+                    }
+                    if(el && !["w1plus", "w1minus", "w2plus", "w2minus", "w1pm", "w2pm"].includes(el.id)) {
+                        el.classList.toggle('libre', dataBel.vias[id] === 0);
+                    }
+                });
+            }
+            if(dataBel.cambios) {
+                if(dataBel.cambios.W12 !== undefined) curW = dataBel.cambios.W12.toString();
+                if(dataBel.cambios.AW12 !== undefined) flagAveria_Bel = dataBel.cambios.AW12;
+            }
+            procesarBloqueSenales(dataBel.senales);
+            procesarDatosTrafico(dataBel.trafico || dataBel.datos_trafico, "B");
+            procesarEnclavamientosCambios(dataBel.enclavamientos);
+        }
+
+        // ==========================================
         // 2. PROCESAMIENTO NÚÑEZ / RIVADAVIA
         // ==========================================
         var dataNuz = cabinas.nunez;
-        if(dataNuz) {
+       if (dataNuz && dataNuz.status) {
+    var led = document.getElementById('indicadorNunez');
+    if (led) {
+        if (dataNuz.status.status == 1) {
+            led.className = 'led-status led-on';
+            window.lastHeartbeatNunez = Date.now();
+        } else {
+            led.className = 'led-status led-off';
+        }
+    }
+
+
             if(dataNuz.vias) {
                 if(dataNuz.vias["w11pm"] !== undefined) cambiosNuz["1011"].ocu = (dataNuz.vias["w11pm"] === 1);
                 if(dataNuz.vias["w10pm"] !== undefined) w10_ocupado = (dataNuz.vias["w10pm"] === 1);
@@ -2068,7 +2088,18 @@ db.ref('cabinas').on('value', function(snapshot) {
         // 3. PROCESAMIENTO CABINA OLIVOS
         // ==========================================
         var dataOli = cabinas.olivos;
-        if(dataOli) {
+        
+  if (dataOli && dataOli.status) {
+    var led = document.getElementById('indicadorOlivos');
+    if (led) {
+        if (dataOli.status.status == 1) {
+            led.className = 'led-status led-on';
+            window.lastHeartbeatOlivos = Date.now();
+        } else {
+            led.className = 'led-status led-off';
+        }
+    }
+
             if(dataOli.vias) {
                 if(dataOli.vias["w21pm"] !== undefined) cambiosNuz["2021"].ocu = (dataOli.vias["w21pm"] === 1);
                 if(dataOli.vias["w20pm"] !== undefined) w20_ocupado = (dataOli.vias["w20pm"] === 1);
@@ -2116,8 +2147,19 @@ db.ref('cabinas').on('value', function(snapshot) {
         // ==========================================
         // 4. PROCESAMIENTO CABINA SAN ISIDRO
         // ==========================================
-        var dataIsi = cabinas["san isidro"] || cabinas.sanIsidro || cabinas.isidro || cabinas.sanisidro; 
-        if(dataIsi) {
+        var dataIsi = cabinas["san isidro"] || cabinas.sanIsidro || cabinas.isidro || cabinas.sanisidro;  
+
+            if (dataIsi && dataIsi.status) {
+    var led = document.getElementById('indicadorsanisidro');
+    if (led) {
+        if (dataIsi.status.status == 1) {
+            led.className = 'led-status led-on';
+            window.lastHeartbeatsanisidro = Date.now();
+        } else {
+            led.className = 'led-status led-off';
+        }
+    }
+
             if(dataIsi.vias) {
                 if(dataIsi.vias["w31pm"] !== undefined) cambiosNuz["3031"].ocu = (dataIsi.vias["w31pm"] === 1);
                 if(dataIsi.vias["w30pm"] !== undefined) w30_ocupado = (dataIsi.vias["w30pm"] === 1);
@@ -2159,9 +2201,19 @@ db.ref('cabinas').on('value', function(snapshot) {
     // ==========================================
         // 5. PROCESAMIENTO CABINA SAN FERNANDO (CORREGIDO)
         // ==========================================
-        var dataSf = cabinas.sanfernando || cabinas["san fernando"];
-        
-        if(dataSf) {
+        var dataSf = cabinas.sanfernando || cabinas["san fernando"];        
+        if (dataSf && dataSf.status) {
+    var led = document.getElementById('indicadorsanfernando');
+    if (led) {
+        if (dataSf.status.status == 1) {
+            led.className = 'led-status led-on';
+            window.lastHeartbeatsanfernando = Date.now();
+        } else {
+            led.className = 'led-status led-off';
+        }
+    }
+
+
             if(dataSf.vias) {
                 // Guardamos ambas ocupaciones en la matriz igual que San Isidro
                 if(dataSf.vias["w61pm"] !== undefined) cambiosNuz["6061"].ocu = (dataSf.vias["w61pm"] === 1);
@@ -2204,11 +2256,27 @@ db.ref('cabinas').on('value', function(snapshot) {
         // 6. PROCESAMIENTO CABINA TERMINAL TIGRE (CORREGIDO)
         // ==========================================
         var dataTig = cabinas.tigre || cabinas["tigre"];
-        if(dataTig) {
+        
+if (dataTig && dataTig.status) {
+    var led = document.getElementById('indicadortigre');
+    if (led) {
+        if (dataTig.status.status == 1) {
+            led.className = 'led-status led-on';
+            window.lastHeartbeattigre = Date.now();
+        } else {
+            led.className = 'led-status led-off';
+        }
+    }
+
+
             if(dataTig.vias) {
                 // --- CORRECCIÓN: Guardar ocupación en la matriz de cambios de Tigre ---
                 if(dataTig.vias["w71pm"] !== undefined) cambiosNuz["7071"].ocu = (dataTig.vias["w71pm"] === 1);
+                if(dataTig.vias["w70pm"] !== undefined) cambiosNuz["7071"].ocuAbajo = (dataTig.vias["w70pm"] === 1);
+
                 if(dataTig.vias["w73pm"] !== undefined) cambiosNuz["7473"].ocu = (dataTig.vias["w73pm"] === 1);
+                if(dataTig.vias["w74pm"] !== undefined) cambiosNuz["7473"].ocuAbajo = (dataTig.vias["w74pm"] === 1);
+
                 if(dataTig.vias["w72pm"] !== undefined) cambiosNuz["72"].ocu = (dataTig.vias["w72pm"] === 1);
                 if(dataTig.vias["w75pm"] !== undefined) cambiosNuz["75"].ocu = (dataTig.vias["w75pm"] === 1);
 
@@ -2273,8 +2341,18 @@ function actualizarCartelRuta(datoItinerario) {
         // 7. PROCESAMIENTO CABINA VICTORIA (CORREGIDO INTEGRAL CON W47/143)
         // ==================================================================
         var dataVic = cabinas.victoria || cabinas["victoria"] || cabinas.vic;
+     if (dataVic && dataVic.status) {
+    var led = document.getElementById('indicadorvictoria');
+    if (led) {
+        if (dataVic.status.status == 1) {
+            led.className = 'led-status led-on';
+            window.lastHeartbeatvictoria = Date.now();
+        } else {
+            led.className = 'led-status led-off';
+        }
+    }
 
-        if (dataVic) {
+
             if(dataVic.vias) {
                 // Ocupaciones W40/W41
                 if(dataVic.vias["w41pm"] !== undefined) cambiosNuz["4041"].ocu = (dataVic.vias["w41pm"] === 1);  
@@ -2545,6 +2623,42 @@ function sincronizarViasEspejo(dataVic) {
         }
     }
 }
+
+// --- VIGILANTE DE SISTEMA (Heartbeat Monitor) ---
+// --- VIGILANTE DE SEGURIDAD (BELGRANO Y NUÑEZ) ---
+setInterval(function() {
+    var ahora = Date.now();
+    
+    // Lista de cabinas a vigilar
+    var cabinasVigiladas = [
+        { id: 'indicadorBelgrano', timer: window.lastHeartbeatBelgrano, ref: 'cabinas/belgrano/status/status' },
+        { id: 'indicadorNunez',    timer: window.lastHeartbeatNunez,    ref: 'cabinas/nunez/status/status' },
+        { id: 'indicadorOlivos',    timer: window.lastHeartbeatOlivos,    ref: 'cabinas/olivos/status/status' },
+        { id: 'indicadorsanisidro',    timer: window.lastHeartbeatsanisidro,    ref: 'cabinas/sanisidro/status/status' },
+        { id: 'indicadorvictoria',    timer: window.lastHeartbeatvictoria,    ref: 'cabinas/victoria/status/status' },
+        { id: 'indicadorsanfernando', timer: window.lastHeartbeatsanfernando,  ref:'cabinas/sanfernando/status/status' },
+        { id: 'indicadortigre', timer: window.lastHeartbeattigre,  ref:'cabinas/tigre/status/status' }
+    ];
+
+    cabinasVigiladas.forEach(function(c) {
+        var led = document.getElementById(c.id);
+        
+        // Si pasan 4 segundos sin señal
+        if (c.timer && (ahora - c.timer > 30000)) {
+            if (led) led.className = 'led-status led-off';
+            
+            // Verificamos en Firebase antes de escribir el 0
+            var ref = firebase.database().ref(c.ref);
+            ref.once('value').then(function(snapshot) {
+                if (snapshot.val() === 1) {
+                    console.log("Falla en " + c.id + ": Enviando 0 a Firebase...");
+                    ref.set(0);
+                }
+            });
+        }
+    });
+}, 3000);
+
 
 // NUEVA: FUNCIÓN UNIVERSAL PARA CUALQUIER CARTEL DEL MAPA
 // (Te sirve para Tigre, Victoria V, Victoria W o el que quieras, validando las 8 opciones)
